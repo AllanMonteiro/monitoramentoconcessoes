@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="pt-BR" data-theme="light">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Concessões Florestais · Monitor Nacional</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;0,900;1,600&family=Barlow:wght@300;400;500;600&family=Barlow+Condensed:wght@500;700&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<style>
+/* ═══ DESIGN TOKENS ═══ */
+:root {
+  /* Light */
+  --bg:       #f7f5f0;
+  --surface:  #ffffff;
+  --surface2: #f0ede6;
+  --surface3: #e8e4db;
+  --ink:      #1c1c17;
+  --ink2:     #343428;
+  --muted:    #7a7660;
+  --ghost:    #b0ac98;
+  --rule:     #e0dbd0;
+  --rule2:    #cac4b5;
+
+  --forest:   #1d5c35;
+  --fern:     #2e7d4f;
+  --leaf:     #45a068;
+  --mint:     #7dcfa0;
+  --sage-bg:  #edf7f1;
+  --sage-br:  #b8ddc8;
+
+  --earth:    #7a4e12;
+  --sand:     #c4903a;
+  --sand-bg:  #fdf3e3;
+  --sand-br:  #f0c878;
+
+  --steel:    #24456e;
+  --sky:      #3a6fa8;
+  --mist-bg:  #edf3fc;
+  --mist-br:  #b8cef0;
+
+  --crimson:  #7a1e1e;
+  --blush-bg: #fdf0f0;
+  --blush-br: #e8b8b8;
+
+  --sb-bg:    #131a10;
+  --sb-text:  rgba(255,255,255,.55);
+  --sb-act:   rgba(255,255,255,.1);
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.06), 0 1px 2px rgba(0,0,0,.04);
+  --shadow:    0 4px 16px rgba(0,0,0,.08), 0 1px 4px rgba(0,0,0,.04);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.12);
+}
+
+[data-theme="dark"] {
+  --bg:       #0e120c;
+  --surface:  #161c13;
+  --surface2: #1c2419;
+  --surface3: #232c1f;
+  --ink:      #e0e8dc;
+  --ink2:     #b8c8b2;
+  --muted:    #6a8060;
+  --ghost:    #3a4c34;
+  --rule:     rgba(255,255,255,.07);
+  --rule2:    rgba(255,255,255,.12);
+
+  --forest:   #5ad888;
+  --fern:     #48c070;
+  --leaf:     #38a858;
+  --mint:     #90e0b0;
+  --sage-bg:  rgba(90,216,136,.07);
+  --sage-br:  rgba(90,216,136,.2);
+
+  --earth:    #c48038;
+  --sand:     #e0a848;
+  --sand-bg:  rgba(224,168,72,.07);
+  --sand-br:  rgba(224,168,72,.22);
+
+  --steel:    #5888c8;
+  --sky:      #70a8e8;
+  --mist-bg:  rgba(112,168,232,.07);
+  --mist-br:  rgba(112,168,232,.22);
+
+  --crimson:  #e08080;
+  --blush-bg: rgba(224,128,128,.07);
+  --blush-br: rgba(224,128,128,.22);
+
+  --sb-bg:    #0a0e08;
+  --sb-text:  rgba(255,255,255,.45);
+  --sb-act:   rgba(255,255,255,.08);
+
+  --shadow-sm: 0 1px 3px rgba(0,0,0,.3);
+  --shadow:    0 4px 16px rgba(0,0,0,.4);
+  --shadow-lg: 0 12px 40px rgba(0,0,0,.5);
+}
+
+/* ═══ RESET ═══ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { height: 100%; -webkit-font-smoothing: antialiased; }
+body {
+  display: flex; min-height: 100%;
+  background: var(--bg); color: var(--ink);
+  font-family: 'Barlow', sans-serif;
+  font-size: 14px; line-height: 1.55;
+  transition: background .25s, color .25s;
+}
+
+/* ═══ SIDEBAR ═══ */
+.sb {
+  width: 220px; flex-shrink: 0;
+  background: var(--sb-bg);
+  display: flex; flex-direction: column;
+  position: sticky; top: 0; height: 100vh;
+  border-right: 1px solid rgba(255,255,255,.04);
+}
+
+.sb-brand {
+  padding: 22px 18px 18px;
+  border-bottom: 1px solid rgba(255,255,255,.06);
+}
+
+.sb-icon {
+  width: 32px; height: 32px;
+  margin-bottom: 11px;
+  position: relative;
+}
+
+.sb-icon svg { width: 32px; height: 32px; }
+
+.sb-title {
+  font-family: 'Playfair Display', serif;
+  font-size: .95rem; font-weight: 900;
+  color: #fff; line-height: 1.2;
+  letter-spacing: -.01em;
+}
+
+.sb-sub {
+  font-family: 'DM Mono', monospace;
+  font-size: .46rem; color: rgba(255,255,255,.3);
+  letter-spacing: .16em; text-transform: uppercase;
+  margin-top: 5px;
+}
+
+.sb-nav { flex: 1; padding: 10px 8px; overflow-y: auto; display: flex; flex-direction: column; gap: 1px; }
+
+.sb-section {
+  font-family: 'DM Mono', monospace;
+  font-size: .45rem; letter-spacing: .18em; text-transform: uppercase;
+  color: rgba(255,255,255,.22); padding: 9px 10px 4px;
+  margin-top: 6px;
+}
+
+.nb {
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; padding: 7px 10px;
+  background: none; border: none; border-radius: 5px;
+  color: var(--sb-text);
+  font-family: 'Barlow', sans-serif; font-size: .78rem; font-weight: 400;
+  cursor: pointer; text-align: left;
+  transition: background .12s, color .12s;
+  position: relative;
+}
+.nb:hover { background: rgba(255,255,255,.06); color: rgba(255,255,255,.8); }
+.nb.on { background: var(--sb-act); color: #fff; }
+.nb.on::before {
+  content: ''; position: absolute;
+  left: 0; top: 22%; bottom: 22%;
+  width: 2px; background: var(--mint);
+  border-radius: 0 1px 1px 0;
+}
+
+.nb-ico { width: 13px; height: 13px; flex-shrink: 0; stroke: currentColor; fill: none; stroke-width: 1.5; opacity: .65; }
+.nb.on .nb-ico { opacity: 1; }
+.nb-badge {
+  margin-left: auto;
+  font-family: 'DM Mono', monospace; font-size: .5rem;
+  background: rgba(255,255,255,.07); color: rgba(255,255,255,.4);
+  padding: 1px 5px; border-radius: 3px;
+}
+.nb.on .nb-badge { background: rgba(125,207,160,.2); color: var(--mint); }
+
+.sb-foot {
+  padding: 12px 14px;
+  border-top: 1px solid rgba(255,255,255,.06);
+}
+.sb-source {
+  display: flex; align-items: center; gap: 7px;
+  font-family: 'DM Mono', monospace; font-size: .47rem;
+  color: rgba(255,255,255,.28); padding: 3px 0;
+}
+.pulse { width: 5px; height: 5px; border-radius: 50%; background: var(--mint); flex-shrink: 0; animation: heartbeat 2.4s ease-in-out infinite; }
+@keyframes heartbeat { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.3;transform:scale(.8)} }
+
+.theme-toggle {
+  display: flex; align-items: center; gap: 7px;
+  width: 100%; padding: 6px 10px; margin-top: 6px;
+  background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.06);
+  border-radius: 5px; cursor: pointer;
+  font-family: 'DM Mono', monospace; font-size: .48rem;
+  color: rgba(255,255,255,.4); transition: all .15s;
+}
+.theme-toggle:hover { background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); }
+.theme-toggle svg { width: 10px; height: 10px; stroke: currentColor; fill: none; stroke-width: 1.6; flex-shrink: 0; }
+
+/* ═══ MAIN ═══ */
+.main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+
+/* ─── TOPBAR ─── */
+.topbar {
+  background: var(--surface); border-bottom: 1px solid var(--rule);
+  padding: 18px 32px 0;
+  position: sticky; top: 0; z-index: 20;
+  box-shadow: var(--shadow-sm);
+}
+.top-upper { display: flex; align-items: flex-end; justify-content: space-between; padding-bottom: 14px; flex-wrap: wrap; gap: 10px; }
+.top-heading { display: flex; flex-direction: column; gap: 4px; }
+.top-eyebrow { font-family: 'DM Mono', monospace; font-size: .52rem; color: var(--fern); letter-spacing: .14em; text-transform: uppercase; display: flex; align-items: center; gap: 7px; }
+.top-title { font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 900; color: var(--ink); letter-spacing: -.02em; line-height: 1; }
+.top-tools { display: flex; flex-direction: column; align-items: flex-end; gap: 7px; }
+.searchbox { display: flex; align-items: center; gap: 7px; background: var(--surface2); border: 1px solid var(--rule2); border-radius: 6px; padding: 5px 12px; }
+.searchbox svg { width: 12px; height: 12px; stroke: var(--ghost); fill: none; stroke-width: 1.8; flex-shrink: 0; }
+#srch { background: none; border: none; font-family: 'DM Mono', monospace; font-size: .62rem; color: var(--ink); outline: none; width: 210px; }
+#srch::placeholder { color: var(--ghost); }
+.top-stamp { font-family: 'DM Mono', monospace; font-size: .52rem; color: var(--ghost); text-align: right; line-height: 2; }
+.top-stamp b { color: var(--fern); }
+
+/* ─── KPI ROW ─── */
+.kpi-strip { display: grid; grid-template-columns: repeat(5,1fr); border-top: 1px solid var(--rule); }
+.kc { padding: 12px 20px; border-right: 1px solid var(--rule); }
+.kc:last-child { border-right: none; }
+.kn { font-family: 'Playfair Display', serif; font-size: 1.45rem; font-weight: 700; font-style: italic; color: var(--forest); line-height: 1; }
+.kn.b { color: var(--steel); }
+.kl { font-family: 'DM Mono', monospace; font-size: .48rem; color: var(--ghost); text-transform: uppercase; letter-spacing: .1em; margin-top: 2px; }
+.ks { font-size: .65rem; color: var(--muted); margin-top: 1px; }
+
+/* ═══ CONTENT ═══ */
+.content { flex: 1; padding: 28px 32px 72px; overflow-y: auto; }
+.panel { display: none; animation: paneIn .22s ease; }
+.panel.on { display: block; }
+@keyframes paneIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:none} }
+
+/* ─── SECTION HEADER ─── */
+.sh { display: flex; align-items: flex-end; justify-content: space-between; margin-bottom: 18px; flex-wrap: wrap; gap: 8px; padding-bottom: 12px; border-bottom: 2px solid var(--ink); }
+.sh-title { font-family: 'Playfair Display', serif; font-size: 1.15rem; font-weight: 900; color: var(--ink); }
+.sh-meta { font-family: 'DM Mono', monospace; font-size: .5rem; color: var(--ghost); }
+.sh-actions { display: flex; gap: 7px; align-items: center; flex-wrap: wrap; }
+
+/* ─── BOXES ─── */
+.infobox { padding: 13px 17px; border-radius: 0; border-left: 3px solid; font-size: .77rem; line-height: 1.7; margin-bottom: 18px; }
+.ib-green { background: var(--sage-bg); border-color: var(--fern); color: var(--ink2); }
+.ib-blue { background: var(--mist-bg); border-color: var(--sky); color: var(--ink2); }
+.ib-amber { background: var(--sand-bg); border-color: var(--sand); color: var(--ink2); }
+.infobox strong { font-weight: 600; }
+.ib-green strong { color: var(--forest); }
+.ib-blue strong { color: var(--steel); }
+.ib-amber strong { color: var(--earth); }
+
+/* ─── PROGRESS TRACK ─── */
+.progress { display: flex; align-items: center; margin-bottom: 20px; overflow-x: auto; padding: 2px 0; }
+.ps { display: flex; flex-direction: column; align-items: center; gap: 4px; flex: 1; min-width: 70px; }
+.pc {
+  width: 24px; height: 24px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: .6rem; font-weight: 700; flex-shrink: 0;
+  border: 2px solid var(--rule2);
+  font-family: 'DM Mono', monospace;
+}
+.pc.done { background: var(--forest); border-color: var(--forest); color: #fff; }
+.pc.now  { background: var(--sand-bg); border-color: var(--sand); color: var(--earth); animation: nowpulse 1.6s ease-in-out infinite; }
+@keyframes nowpulse { 0%,100%{box-shadow:0 0 0 0 rgba(196,144,58,.3)} 50%{box-shadow:0 0 0 5px rgba(196,144,58,0)} }
+.pc.pend { background: var(--surface2); border-color: var(--rule2); color: var(--ghost); }
+.pl { font-family: 'Barlow Condensed', sans-serif; font-size: .52rem; color: var(--muted); text-align: center; text-transform: uppercase; letter-spacing: .05em; line-height: 1.2; }
+.pl.done { color: var(--forest); }
+.pl.now  { color: var(--earth); font-weight: 700; }
+.p-connector { flex: 1; height: 2px; background: var(--rule2); margin: 0 3px; margin-bottom: 16px; min-width: 14px; }
+.p-connector.done { background: var(--forest); }
+
+/* ─── CARDS ─── */
+.cards { display: flex; flex-direction: column; gap: 12px; }
+.card {
+  background: var(--surface); border: 1px solid var(--rule);
+  border-top: 3px solid var(--rule2);
+  transition: box-shadow .18s, border-top-color .18s;
+  box-shadow: var(--shadow-sm);
+}
+.card:hover { box-shadow: var(--shadow); }
+.card.c-green { border-top-color: var(--fern); }
+.card.c-blue  { border-top-color: var(--sky); }
+.card.c-amber { border-top-color: var(--sand); }
+.card.c-dim   { border-top-color: var(--ghost); }
+.card-body { padding: 18px 22px 20px; }
+
+/* pills */
+.pill-row { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: 9px; }
+.pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; font-family: 'Barlow Condensed', sans-serif;
+  font-size: .6rem; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; border: 1px solid; border-radius: 2px;
+}
+.pill-dot { width: 4px; height: 4px; border-radius: 50%; background: currentColor; }
+.p-est   { background: var(--sage-bg); color: var(--forest); border-color: var(--sage-br); }
+.p-fed   { background: var(--mist-bg); color: var(--steel); border-color: var(--mist-br); }
+.p-ok    { background: var(--sage-bg); color: var(--fern); border-color: var(--sage-br); }
+.p-warn  { background: var(--sand-bg); color: var(--earth); border-color: var(--sand-br); }
+.p-dim   { background: var(--surface2); color: var(--muted); border-color: var(--rule2); }
+.p-purp  { background: #f3eeff; color: #5030a0; border-color: #c8b0f0; }
+[data-theme="dark"] .p-purp { background: rgba(160,128,240,.08); color: #b8a0f8; border-color: rgba(160,128,240,.25); }
+
+.card-title { font-family: 'Playfair Display', serif; font-size: .96rem; font-weight: 700; color: var(--ink); line-height: 1.3; margin-bottom: 13px; }
+
+/* meta grid */
+.mgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: 1px; background: var(--rule); margin-bottom: 13px; }
+.mc { background: var(--surface2); padding: 8px 12px; }
+.mk { font-family: 'DM Mono', monospace; font-size: .47rem; color: var(--ghost); text-transform: uppercase; letter-spacing: .09em; }
+.mv { font-size: .76rem; font-weight: 500; color: var(--ink); margin-top: 1px; }
+
+.cdesc { font-size: .76rem; color: var(--muted); line-height: 1.7; margin-bottom: 12px; }
+
+/* table */
+.t { width: 100%; border-collapse: collapse; font-size: .72rem; margin-bottom: 12px; }
+.t th { background: var(--surface2); padding: 6px 12px; text-align: left; font-family: 'DM Mono', monospace; font-size: .48rem; letter-spacing: .09em; text-transform: uppercase; color: var(--ghost); border-bottom: 2px solid var(--rule2); font-weight: 500; }
+.t td { padding: 7px 12px; border-bottom: 1px solid var(--rule); vertical-align: middle; }
+.t tr:last-child td { border-bottom: none; }
+.t tr:hover td { background: var(--surface2); }
+.tu { font-family: 'DM Mono', monospace; font-size: .66rem; font-weight: 500; color: var(--forest); }
+.tf { font-family: 'DM Mono', monospace; font-size: .66rem; font-weight: 500; color: var(--steel); }
+.tc { color: var(--muted); font-size: .7rem; }
+.tw { font-weight: 600; color: var(--ink); }
+.tok  { color: var(--fern); font-size: .66rem; font-weight: 600; }
+.tokf { color: var(--sky); font-size: .66rem; font-weight: 600; }
+.tko  { color: var(--crimson); font-size: .66rem; }
+.twrn { color: var(--earth); font-size: .66rem; font-weight: 500; }
+.pmi  { font-family: 'DM Mono', monospace; font-size: .68rem; font-weight: 600; color: var(--earth); }
+.pma  { font-family: 'DM Mono', monospace; font-size: .68rem; font-weight: 600; color: var(--fern); }
+.tn   { font-family: 'DM Mono', monospace; font-size: .65rem; color: var(--muted); }
+.rank1 { font-family: 'DM Mono', monospace; font-size: .72rem; font-weight: 700; color: var(--forest); }
+
+/* tags */
+.tagset { display: flex; flex-wrap: wrap; gap: 4px; margin: 5px 0 11px; }
+.tag { padding: 2px 9px; font-family: 'DM Mono', monospace; font-size: .57rem; border: 1px solid; border-radius: 2px; }
+.tag-r { background: var(--blush-bg); color: var(--crimson); border-color: var(--blush-br); }
+.tag-d { background: var(--surface2); color: var(--muted); border-color: var(--rule2); }
+
+/* links */
+.linkrow { display: flex; flex-wrap: wrap; gap: 6px; }
+.lk { display: inline-flex; align-items: center; gap: 4px; padding: 5px 11px; font-family: 'DM Mono', monospace; font-size: .56rem; text-decoration: none; border: 1px solid; border-radius: 3px; transition: all .14s; color: var(--forest); border-color: var(--sage-br); }
+.lk:hover { background: var(--forest); color: #fff; border-color: var(--forest); }
+.lk.blue { color: var(--steel); border-color: var(--mist-br); }
+.lk.blue:hover { background: var(--steel); color: #fff; border-color: var(--steel); }
+.lk.dim { color: var(--muted); border-color: var(--rule2); }
+.lk.dim:hover { background: var(--surface2); color: var(--ink); }
+
+/* export */
+.xbtn { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-family: 'DM Mono', monospace; font-size: .52rem; border: 1px solid; border-radius: 3px; cursor: pointer; transition: all .14s; color: var(--forest); border-color: var(--sage-br); background: var(--sage-bg); }
+.xbtn:hover { background: var(--forest); color: #fff; border-color: var(--forest); }
+.xbtn.blue { color: var(--steel); border-color: var(--mist-br); background: var(--mist-bg); }
+.xbtn.blue:hover { background: var(--steel); color: #fff; }
+
+/* stat row */
+.statrow { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px,1fr)); gap: 1px; background: var(--rule); margin-bottom: 18px; }
+.statcell { background: var(--surface); padding: 13px 16px; }
+.sv { font-family: 'Playfair Display', serif; font-size: 1.3rem; font-weight: 700; font-style: italic; color: var(--forest); line-height: 1; margin-top: 2px; }
+.sv.b { color: var(--steel); }
+.sn { font-size: .64rem; color: var(--muted); margin-top: 2px; }
+
+/* section divider */
+.sdiv { font-family: 'Barlow Condensed', sans-serif; font-size: .62rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; color: var(--ghost); padding: 0 0 8px; margin: 18px 0 11px; border-bottom: 1px solid var(--rule); }
+.sdiv.g { color: var(--fern); }
+.sdiv.b { color: var(--sky); }
+.sdiv.a { color: var(--sand); }
+.sdiv.r { color: var(--crimson); }
+
+/* sub label */
+.slbl { font-family: 'DM Mono', monospace; font-size: .49rem; letter-spacing: .12em; text-transform: uppercase; color: var(--ghost); margin-bottom: 7px; }
+.slbl.g { color: var(--fern); }
+.slbl.b { color: var(--sky); }
+.slbl.a { color: var(--earth); }
+
+/* timeline */
+.tl { display: flex; flex-direction: column; }
+.tli { display: flex; gap: 14px; padding: 10px 0; border-bottom: 1px solid var(--rule); align-items: flex-start; transition: padding-left .12s; }
+.tli:hover { padding-left: 4px; }
+.tly { font-family: 'Playfair Display', serif; font-size: .92rem; font-weight: 700; min-width: 54px; color: var(--rule2); flex-shrink: 0; font-style: italic; }
+.tli.cur .tly { color: var(--forest); }
+.tli.cur .tlb { color: var(--ink); }
+.tlb { font-size: .74rem; color: var(--muted); line-height: 1.55; }
+.tl-chip { display: inline-block; margin-bottom: 3px; padding: 1px 7px; font-size: .5rem; font-family: 'DM Mono', monospace; background: var(--sage-bg); color: var(--forest); border-radius: 2px; text-transform: uppercase; letter-spacing: .06em; }
+.tla { font-family: 'DM Mono', monospace; font-size: .53rem; color: var(--fern); text-decoration: none; display: inline-block; margin-top: 4px; }
+.tla:hover { text-decoration: underline; }
+
+/* ─── MAP ─── */
+.map-shell { border: 1px solid var(--rule); margin-bottom: 16px; box-shadow: var(--shadow); overflow: hidden; }
+#themap { height: 510px; width: 100%; }
+.map-bar { display: flex; align-items: center; gap: 12px; padding: 9px 16px; background: var(--surface2); border-top: 1px solid var(--rule); flex-wrap: wrap; }
+.mf-row { display: flex; flex-wrap: wrap; gap: 5px; align-items: center; }
+.mf-label { font-family: 'DM Mono', monospace; font-size: .47rem; color: var(--ghost); text-transform: uppercase; letter-spacing: .09em; margin-right: 2px; }
+.mfbtn { padding: 3px 10px; font-family: 'DM Mono', monospace; font-size: .52rem; border: 1px solid var(--rule2); background: var(--surface); color: var(--muted); cursor: pointer; border-radius: 2px; transition: all .13s; }
+.mfbtn:hover { border-color: var(--rule2); background: var(--surface2); }
+.mfbtn.f.on { background: var(--steel); color: #fff; border-color: var(--steel); }
+.mfbtn.e.on { background: var(--forest); color: #fff; border-color: var(--forest); }
+.mfbtn.p.on { background: var(--sand); color: #fff; border-color: var(--sand); }
+.mfbtn.x.on { background: #666; color: #fff; border-color: #666; }
+.map-legend { display: flex; flex-wrap: wrap; gap: 10px; margin-left: auto; }
+.leg { display: flex; align-items: center; gap: 5px; font-size: .63rem; color: var(--muted); }
+.legdot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid #fff; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+
+/* highlight */
+.hl { background: #ffe55a; border-radius: 2px; padding: 0 1px; }
+[data-theme="dark"] .hl { background: rgba(255,220,50,.25); }
+
+/* scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--rule2); border-radius: 2px; }
+
+/* responsive */
+@media (max-width:820px) {
+  body { flex-direction: column; }
+  .sb { width: 100%; height: auto; position: static; }
+  .sb-nav { flex-direction: row; flex-wrap: wrap; padding: 5px; }
+  .sb-section,.sb-foot { display: none; }
+  .kpi-strip { grid-template-columns: repeat(3,1fr); }
+  .content,.topbar { padding-left: 14px; padding-right: 14px; }
+  #themap { height: 300px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SIDEBAR ══ -->
+<aside class="sb">
+  <div class="sb-brand">
+    <div class="sb-icon">
+      <svg viewBox="0 0 32 32" fill="none">
+        <path d="M16 4 L28 12 L28 26 L4 26 L4 12 Z" fill="rgba(255,255,255,.06)" stroke="rgba(255,255,255,.2)" stroke-width="1.2"/>
+        <path d="M16 8 L16 22 M11 14 L16 8 L21 14" stroke="#7dcfa0" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+        <path d="M8 26 L24 26" stroke="rgba(255,255,255,.3)" stroke-width="1.2" stroke-linecap="round"/>
+      </svg>
+    </div>
+    <div class="sb-title">Concessões<br>Florestais</div>
+    <div class="sb-sub">Monitor Nacional · BR</div>
+  </div>
+
+  <nav class="sb-nav">
+    <div class="sb-section">Visão Geral</div>
+    <button class="nb on" onclick="go('mapa',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><path d="M5.5 13L1 14V4l5-2 5 2 4-1.5V12l-4 1.5-5-2z" stroke-linecap="round" stroke-linejoin="round"/><path d="M6 2v11M11 4v8" stroke-linecap="round"/></svg>
+      Mapa Integrado <span class="nb-badge">26</span>
+    </button>
+    <button class="nb" onclick="go('painel',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Painel Comparativo <span class="nb-badge">2</span>
+    </button>
+
+    <div class="sb-section">IDEFLOR-Bio · Estadual</div>
+    <button class="nb" onclick="go('e-edital',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><rect x="2" y="2" width="12" height="12" rx="1.5"/><path d="M5 6h6M5 9h4" stroke-linecap="round"/></svg>
+      Edital Aberto <span class="nb-badge">1</span>
+    </button>
+    <button class="nb" onclick="go('e-fase',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 1.5" stroke-linecap="round"/></svg>
+      Fase Externa <span class="nb-badge">1</span>
+    </button>
+    <button class="nb" onclick="go('e-contratos',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><path d="M3 2h8l3 3v9H3z"/><path d="M9 2v4h4M5 9h6M5 12h4" stroke-linecap="round"/></svg>
+      Contratos Vigentes <span class="nb-badge">9</span>
+    </button>
+    <button class="nb" onclick="go('e-precos',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v6M6 7h3.5a1.5 1.5 0 010 3H6" stroke-linecap="round"/></svg>
+      Preços Madeira <span class="nb-badge">6</span>
+    </button>
+    <button class="nb" onclick="go('e-rank',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><path d="M3 13V9M7 13V6M11 13V3" stroke-linecap="round"/></svg>
+      Classificação UMF <span class="nb-badge">7</span>
+    </button>
+    <button class="nb" onclick="go('e-paof',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><path d="M2 12L5 8 8 10 11 5 14 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      PAOF Estadual <span class="nb-badge">10</span>
+    </button>
+
+    <div class="sb-section">SFB · Federal</div>
+    <button class="nb" onclick="go('f-contratos',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><path d="M8 2L2 6v8h4v-4h4v4h4V6L8 2z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Contratos Vigentes <span class="nb-badge">21</span>
+    </button>
+    <button class="nb" onclick="go('f-futuros',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M8 5v3l2 2M5.5 2.5L3 5" stroke-linecap="round"/></svg>
+      Próximos Editais <span class="nb-badge">11</span>
+    </button>
+    <button class="nb" onclick="go('f-paof',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><path d="M2 12L5 8 8 10 11 5 14 7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      PAOF Federal <span class="nb-badge">1</span>
+    </button>
+    <div class="sb-section">Novos Editais</div>
+    <button class="nb" onclick="go('novos',this)">
+      <svg class="nb-ico" viewBox="0 0 16 16"><path d="M8 2v4M8 10v4M2 8h4M10 8h4" stroke-linecap="round"/><circle cx="8" cy="8" r="6"/></svg>
+      Recém Lançados <span class="nb-badge" style="background:rgba(196,144,58,.35);color:#f0c060">4</span>
+    </button>
+  </nav>
+
+  <div class="sb-foot">
+    <div class="sb-source"><span class="pulse"></span>ideflorbio.pa.gov.br</div>
+    <div class="sb-source"><span class="pulse" style="animation-delay:.8s"></span>gov.br/florestal</div>
+    <div class="sb-source"><span class="pulse" style="animation-delay:1.6s"></span>snif.florestal.gov.br</div>
+    <button class="theme-toggle" onclick="toggleTheme()">
+      <svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3"/><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3.5 3.5l1.4 1.4M11.1 11.1l1.4 1.4M3.5 12.5l1.4-1.4M11.1 4.9l1.4-1.4" stroke-linecap="round"/></svg>
+      <span id="thlbl">Modo Escuro</span>
+    </button>
+  </div>
+</aside>
+
+<!-- ══ MAIN ══ -->
+<div class="main">
+  <div class="topbar">
+    <div class="top-upper">
+      <div class="top-heading">
+        <div class="top-eyebrow">
+          <span class="pulse" style="background:var(--fern)"></span>
+          Federal + Estadual · Dados Oficiais
+        </div>
+        <h1 class="top-title" id="ptitle">Mapa Integrado</h1>
+      </div>
+      <div class="top-tools">
+        <div class="searchbox">
+          <svg viewBox="0 0 16 16"><circle cx="6.5" cy="6.5" r="4"/><path d="M10.5 10.5l3 3" stroke-linecap="round"/></svg>
+          <input id="srch" placeholder="Floresta, empresa, UMF, estado..." oninput="doSearch(this.value)">
+        </div>
+        <div class="top-stamp"><div>IDEFLOR-Bio <b>●</b> 22/05/2026</div><div>SFB / SNIF <b>●</b> 22/05/2026</div></div>
+      </div>
+    </div>
+    <div class="kpi-strip">
+      <div class="kc"><div class="kn">9</div><div class="kl">Estaduais vigentes</div><div class="ks">PA — Mamuru + Paru</div></div>
+      <div class="kc"><div class="kn b">21</div><div class="kl">Federais vigentes</div><div class="ks">8 Flonas · AP AM PA RO</div></div>
+      <div class="kc"><div class="kn b">&gt;1,3M</div><div class="kl">ha federais</div><div class="ks">SFB — contratos ativos</div></div>
+      <div class="kc"><div class="kn">~1,5M</div><div class="kl">ha estaduais</div><div class="ks">PA — após CP 001/2026</div></div>
+      <div class="kc"><div class="kn b">6M</div><div class="kl">ha pipeline BNDES</div><div class="ks">11 UCs · a partir 2026</div></div>
+    </div>
+  </div>
+
+  <div class="content">
+
+  <!-- ████ MAPA ████ -->
+  <div class="panel on" id="panel-mapa">
+    <div class="sh">
+      <h2 class="sh-title">Mapa Integrado — Federal &amp; Estadual</h2>
+      <div class="sh-actions">
+        <span class="mf-label">Filtrar:</span>
+        <button class="mfbtn f on" onclick="mapFilter('f',this)">Federal (SFB)</button>
+        <button class="mfbtn e on" onclick="mapFilter('e',this)">Estadual (IDEFLOR)</button>
+        <button class="mfbtn p on" onclick="mapFilter('p',this)">Resultado prelim.</button>
+        <button class="mfbtn x on" onclick="mapFilter('x',this)">Pipeline BNDES</button>
+      </div>
+    </div>
+    <div class="map-shell">
+      <div id="themap"></div>
+      <div class="map-bar">
+        <div class="map-legend">
+          <div class="leg"><div class="legdot" style="background:#24456e"></div>Federal vigente</div>
+          <div class="leg"><div class="legdot" style="background:#1d5c35"></div>Estadual vigente</div>
+          <div class="leg"><div class="legdot" style="background:#c4903a"></div>Resultado preliminar</div>
+          <div class="leg"><div class="legdot" style="background:#888"></div>Pipeline BNDES</div>
+          <div class="leg"><div class="legdot" style="background:#7a1e1e"></div>Rescindido</div>
+        </div>
+      </div>
+    </div>
+    <div class="infobox ib-green">Clique em qualquer marcador para detalhes. <strong>26 pontos mapeados</strong> entre concessões federais (SFB) e estaduais (IDEFLOR-Bio). Posições aproximadas; para shapefiles oficiais, consulte SNIF ou IDEFLOR-Bio.</div>
+  </div>
+
+  <!-- ████ PAINEL COMPARATIVO ████ -->
+  <div class="panel" id="panel-painel">
+    <div class="sh"><h2 class="sh-title">Painel Comparativo — Federal vs Estadual</h2><span class="sh-meta">SFB + IDEFLOR-Bio · 22/05/2026</span></div>
+    <div class="statrow">
+      <div class="statcell"><div class="mk">Área federal vigente</div><div class="sv b">&gt;1,3M ha</div><div class="sn">21 contratos · 8 Flonas</div></div>
+      <div class="statcell"><div class="mk">Área estadual vigente</div><div class="sv">~800K ha</div><div class="sn">9 contratos · PA</div></div>
+      <div class="statcell"><div class="mk">Em licitação (estadual)</div><div class="sv">818K ha</div><div class="sn">CP 001/2026 · Paru + Iriri</div></div>
+      <div class="statcell"><div class="mk">Pipeline BNDES/SFB</div><div class="sv b">6M ha</div><div class="sn">11 UCs · editais 2026+</div></div>
+      <div class="statcell"><div class="mk">Pipeline BNDES/IDEFLOR</div><div class="sv">3,4M ha</div><div class="sn">Paru, Iriri, Trombetas, Faro</div></div>
+      <div class="statcell"><div class="mk">Potencial total</div><div class="sv">~11M ha</div><div class="sn">Federal + Estadual</div></div>
+    </div>
+
+    <div class="sdiv g">SFB — Federal: 8 Florestas Nacionais</div>
+    <div class="card c-blue"><div class="card-body">
+      <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill p-dim">21 contratos · &gt;1,3M ha</span></div>
+      <table class="t">
+        <thead><tr><th>Floresta Nacional</th><th>Estado</th><th>UMFs</th><th>Área aprox.</th><th>Editais</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="tf">Flona do Jamari</td><td class="tc">RO</td><td class="tc">3</td><td class="tn">220.445 ha</td><td class="tc">2008</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Flona de Saracá-Taquera</td><td class="tc">PA</td><td class="tc">4</td><td class="tn">304.146 ha</td><td class="tc">2010</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Flona de Jacundá</td><td class="tc">RO</td><td class="tc">2</td><td class="tn">96.653 ha</td><td class="tc">2011</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Flona do Crepori</td><td class="tc">PA</td><td class="tc">2</td><td class="tn">74.518 ha</td><td class="tc">2012</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Flona de Altamira</td><td class="tc">PA</td><td class="tc">4</td><td class="tn">374.848 ha</td><td class="tc">2014–15</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Flona de Caxiuanã</td><td class="tc">PA</td><td class="tc">3</td><td class="tn">198.080 ha</td><td class="tc">2015–16</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Flona do Amapá</td><td class="tc">AP</td><td class="tc">2</td><td class="tn">~80.000 ha</td><td class="tc">2019</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Flona de Humaitá</td><td class="tc">AM</td><td class="tc">1</td><td class="tn">~50.000 ha</td><td class="tc">2021</td><td class="tokf">● Vigente</td></tr>
+        </tbody>
+      </table>
+      <div class="linkrow"><a class="lk blue" href="https://snif.florestal.gov.br/pt-br/temas-florestais/concessoes-florestais" target="_blank">↗ SNIF — Concessões</a><a class="lk dim" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento" target="_blank">↗ SFB — Monitoramento</a></div>
+    </div></div>
+
+    <div class="sdiv g" style="margin-top:20px">IDEFLOR-Bio — Estadual: Pará</div>
+    <div class="card c-green"><div class="card-body">
+      <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-ok">9 contratos vigentes</span><span class="pill p-dim">2 rescindidos</span></div>
+      <table class="t">
+        <thead><tr><th>Floresta</th><th>UMF</th><th>Concessionário</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="tu" rowspan="3">Mamuru-Arapiuns</td><td class="tc">I</td><td class="tc">LN Guerra</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tc">II</td><td class="tc">Rondobel</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tc">III</td><td class="tc">Amazônia Florestal</td><td class="tok">● Vigente</td></tr>
+          <tr style="border-top:2px solid var(--rule)"><td class="tu" rowspan="6">Flota do Paru</td><td class="tc">I</td><td class="tc">CEMAL</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tc">II</td><td class="tc">Segredo</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tc">III, VII, IX</td><td class="tc">RRX (3 contratos)</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tc">IV</td><td class="tc">Blue Timber</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tc">IV (ant.)</td><td class="tc">SEMASA</td><td class="tko">✕ Rescindido</td></tr>
+          <tr><td class="tc">VIII (ant.)</td><td class="tc">SEMASA</td><td class="tko">✕ Rescindido</td></tr>
+        </tbody>
+      </table>
+      <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/licitacoes-e-contratos/" target="_blank">↗ IDEFLOR-Bio — Contratos</a></div>
+    </div></div>
+  </div>
+
+  <!-- ████ E-EDITAL ████ -->
+  <div class="panel" id="panel-e-edital">
+    <div class="sh"><h2 class="sh-title">Edital Aberto — IDEFLOR-Bio</h2><span class="sh-meta">ideflorbio.pa.gov.br/licitacoes-e-contratos</span></div>
+    <div class="progress">
+      <div class="ps"><div class="pc done">✓</div><div class="pl done">Publicação</div></div><div class="p-connector done"></div>
+      <div class="ps"><div class="pc done">✓</div><div class="pl done">Habilitação</div></div><div class="p-connector done"></div>
+      <div class="ps"><div class="pc done">✓</div><div class="pl done">Prop. Técnica</div></div><div class="p-connector done"></div>
+      <div class="ps"><div class="pc done">✓</div><div class="pl done">Prop. Preços</div></div><div class="p-connector"></div>
+      <div class="ps"><div class="pc now">→</div><div class="pl now">Assinatura</div></div>
+    </div>
+    <div class="cards"><div class="card c-green"><div class="card-body">
+      <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-ok"><span class="pill-dot"></span>Aguardando assinatura</span></div>
+      <div class="card-title">CP 01/2025 — Glebas Mamuru-Arapiuns, UMF 2ª Fase</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Área</div><div class="mv">68.680 ha</div></div>
+        <div class="mc"><div class="mk">Municípios</div><div class="mv">Santarém, Juruti, Aveiro</div></div>
+        <div class="mc"><div class="mk">Resultado técnico</div><div class="mv">DOE 17/04/2025</div></div>
+        <div class="mc"><div class="mk">Sessão de preços</div><div class="mv">22/04/2025</div></div>
+        <div class="mc"><div class="mk">Vencedora</div><div class="mv">SB Ind. Com. Exp. Madeiras</div></div>
+        <div class="mc"><div class="mk">2ª empresa</div><div class="mv">MDP Transportes Ltda</div></div>
+      </div>
+      <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2025/02/EDITAL-CONCORRENCIA-PUBLICA-No-01.2025.-DOE-17.02.pdf" target="_blank">↗ Edital CP 01/2025</a><a class="lk" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2025/04/ATA-DA-DECISAO-DA-PROPOSTA-DE-PRECOS-PARECER-TECNICO-PUBLICACAO.pdf" target="_blank">↗ Ata Decisão Final</a></div>
+    </div></div></div>
+  </div>
+
+  <!-- ████ E-FASE ████ -->
+  <div class="panel" id="panel-e-fase">
+    <div class="sh"><h2 class="sh-title">Fase Externa em Andamento — IDEFLOR-Bio</h2><span class="sh-meta">ideflorbio.pa.gov.br/paru-iriri-edital-aberto</span></div>
+    <div class="progress">
+      <div class="ps"><div class="pc done">✓</div><div class="pl done">Publicação</div></div><div class="p-connector done"></div>
+      <div class="ps"><div class="pc done">✓</div><div class="pl done">Habilitação</div></div><div class="p-connector done"></div>
+      <div class="ps"><div class="pc done">✓</div><div class="pl done">Prop. Técnica</div></div><div class="p-connector done"></div>
+      <div class="ps"><div class="pc now">!</div><div class="pl now">Recursos</div></div><div class="p-connector"></div>
+      <div class="ps"><div class="pc pend">5</div><div class="pl">Prop. Preços</div></div><div class="p-connector"></div>
+      <div class="ps"><div class="pc pend">6</div><div class="pl">Contrato</div></div>
+    </div>
+    <div class="infobox ib-amber">⚠ CP 001/2026 em <strong>fase recursal</strong> (maio/2026). Cinco empresas interpuseram recursos. Resultado sujeito a alteração.</div>
+    <div class="cards"><div class="card c-amber"><div class="card-body">
+      <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-warn"><span class="pill-dot"></span>Fase Recursal — Maio/2026</span></div>
+      <div class="card-title">CP 001/2026 — Florestas Estaduais do Paru e Iriri (818.544 ha · 6 UMFs)</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Florestas</div><div class="mv">Flota Paru + Flota Iriri</div></div>
+        <div class="mc"><div class="mk">UMFs</div><div class="mv">6 (4 Paru + 2 Iriri)</div></div>
+        <div class="mc"><div class="mk">Aviso DOE</div><div class="mv">05/02/2026</div></div>
+        <div class="mc"><div class="mk">Edital publicado</div><div class="mv">17/03/2026 (retif. 18/03)</div></div>
+        <div class="mc"><div class="mk">Sessões</div><div class="mv">31/03 · 01/04 · 24/04/2026</div></div>
+        <div class="mc"><div class="mk">DOE recursos</div><div class="mv">05/05/2026</div></div>
+      </div>
+      <div class="slbl a">Recursos — 5 empresas</div>
+      <div class="tagset"><span class="tag tag-r">LCB da Silva Ltda</span><span class="tag tag-r">FAVVA Agroindustrial Ltda</span><span class="tag tag-r">Biogel Florestal Ltda</span><span class="tag tag-r">Caité Florestal do Brasil Ltda</span><span class="tag tag-r">Blue Timber Florestal Ltda (2 recursos)</span></div>
+      <div class="slbl">Desistências</div>
+      <div class="tagset"><span class="tag tag-d">Mais Brasil</span><span class="tag tag-d">MDP Transportes</span><span class="tag tag-d">Rio Negro Ind. Com.</span><span class="tag tag-d">UPBIO Soluções Ambientais</span></div>
+      <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2026/03/EDITAL-CONCORRENCIA-001.2026-20260317.pdf" target="_blank">↗ Edital CP 001/2026</a><a class="lk dim" href="https://drive.google.com/drive/folders/1SzSdtGJM1Z38TiyiQSfLJmsGuVKhdQw-" target="_blank">↗ Shapes Iriri</a><a class="lk dim" href="https://drive.google.com/drive/folders/1SsobNFEl5osr9Hb5K3f2vqQ6CqivbPZJ" target="_blank">↗ Shapes Paru</a><a class="lk dim" href="https://ideflorbio.pa.gov.br/paru-iriri-edital-aberto" target="_blank">↗ Página completa</a></div>
+    </div></div></div>
+  </div>
+
+  <!-- ████ E-CONTRATOS ████ -->
+  <div class="panel" id="panel-e-contratos">
+    <div class="sh"><h2 class="sh-title">Contratos Vigentes — IDEFLOR-Bio</h2><span class="sh-meta">ideflorbio.pa.gov.br · 22/05/2026</span></div>
+    <div class="cards">
+      <div class="card c-green"><div class="card-body">
+        <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-ok"><span class="pill-dot"></span>3 contratos · Edital 001/2011</span></div>
+        <div class="card-title">Glebas Mamuru-Arapiuns — UMFs I, II e III</div>
+        <table class="t"><thead><tr><th>UMF</th><th>Concessionário</th><th>Status</th><th></th></tr></thead><tbody>
+          <tr><td class="tu">UMF I</td><td>LN Guerra</td><td class="tok">● Vigente</td><td><a class="lk" style="padding:2px 7px;font-size:.5rem" href="https://ideflorbio.pa.gov.br/umf-i-ln-guerra/" target="_blank">↗</a></td></tr>
+          <tr><td class="tu">UMF II</td><td>Rondobel</td><td class="tok">● Vigente</td><td><a class="lk" style="padding:2px 7px;font-size:.5rem" href="https://ideflorbio.pa.gov.br/umf-ii-rondobel/" target="_blank">↗</a></td></tr>
+          <tr><td class="tu">UMF III</td><td>Amazônia Florestal</td><td class="tok">● Vigente</td><td><a class="lk" style="padding:2px 7px;font-size:.5rem" href="https://ideflorbio.pa.gov.br/umf-iii-amazonia-florestal/" target="_blank">↗</a></td></tr>
+        </tbody></table>
+        <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/contratos-mamuru-arapiuns/" target="_blank">↗ Contratos Mamuru</a><a class="lk dim" href="https://ideflorbio.pa.gov.br/glebas-mamuru/" target="_blank">↗ Auditorias AFI</a></div>
+      </div></div>
+      <div class="card c-green"><div class="card-body">
+        <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-ok"><span class="pill-dot"></span>6 ativos</span><span class="pill p-dim">2 rescindidos</span></div>
+        <div class="card-title">Flota Estadual do Paru — UMFs I ao IX</div>
+        <table class="t"><thead><tr><th>UMF</th><th>Concessionário</th><th>Status</th></tr></thead><tbody>
+          <tr><td class="tu">I</td><td>CEMAL</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tu">II</td><td>Segredo</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tu">III, VII, IX</td><td>RRX</td><td class="tok">● 3 contratos vigentes</td></tr>
+          <tr><td class="tu">IV</td><td>Blue Timber</td><td class="tok">● Vigente</td></tr>
+          <tr><td class="tu">IV (ant.)</td><td>SEMASA</td><td class="tko">✕ Rescindido</td></tr>
+          <tr><td class="tu">VIII (ant.)</td><td>SEMASA</td><td class="tko">✕ Rescindido</td></tr>
+        </tbody></table>
+        <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/contratos-paru/" target="_blank">↗ Contratos Paru</a><a class="lk dim" href="https://ideflorbio.pa.gov.br/contratos-rescindidos/" target="_blank">↗ Rescindidos</a></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ████ E-PREÇOS ████ -->
+  <div class="panel" id="panel-e-precos">
+    <div class="sh">
+      <h2 class="sh-title">Preços — Madeira em Tora · CP 001/2026</h2>
+      <div class="sh-actions"><button class="xbtn" onclick="exportCSV('tbl-pc','precos-umf.csv')">⬇ CSV</button><span class="sh-meta">Anexo 12 · ideflorbio.pa.gov.br</span></div>
+    </div>
+    <div class="infobox ib-green">Preços do <strong>Anexo 12 — CP 001/2026</strong>. <strong>PME</strong> = Preço Mínimo do Edital (piso obrigatório). Reajuste anual por <strong>IPCA/IBGE</strong>, IN IDEFLOR-Bio Nº 3/2024.</div>
+    <div class="statrow">
+      <div class="statcell"><div class="mk">Menor PME</div><div class="sv">R$ 2,07/m³</div><div class="sn">UMF XI — Flota Paru</div></div>
+      <div class="statcell"><div class="mk">Maior PME</div><div class="sv">R$ 28,38/m³</div><div class="sn">UMF I — Flota Iriri</div></div>
+      <div class="statcell"><div class="mk">Maior preço máximo</div><div class="sv">R$ 63,65/m³</div><div class="sn">UMF I — Flota Iriri</div></div>
+    </div>
+    <div class="card c-green"><div class="card-body">
+      <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-ok"><span class="pill-dot"></span>CP 001/2026 — Dados oficiais</span></div>
+      <div class="card-title">Preços por UMF — R$/m³ de madeira em tora</div>
+      <table class="t" id="tbl-pc">
+        <thead><tr><th>UMF</th><th>Floresta</th><th>Área (ha)</th><th>PME — Mínimo</th><th>Preço Máximo</th><th>Amplitude</th><th>Vencedor Preliminar</th></tr></thead>
+        <tbody>
+          <tr><td class="tu">UMF VIa</td><td>Flota do Paru</td><td class="tn">59.948</td><td class="pmi">R$ 7,83</td><td class="pma">R$ 45,34</td><td class="tc">R$ 37,51</td><td class="tw">Arapuã Florestal Ltda</td></tr>
+          <tr><td class="tu">UMF VIIIa</td><td>Flota do Paru</td><td class="tn">144.144</td><td class="pmi">R$ 2,91</td><td class="pma">R$ 40,35</td><td class="tc">R$ 37,44</td><td class="tw">Arapuã Florestal Ltda</td></tr>
+          <tr><td class="tu">UMF X</td><td>Flota do Paru</td><td class="tn">167.738</td><td class="pmi">R$ 17,99</td><td class="pma">R$ 56,29</td><td class="tc">R$ 38,30</td><td class="tw">MCS Agroflorestal e Constr. Civil</td></tr>
+          <tr><td class="tu">UMF XI</td><td>Flota do Paru</td><td class="tn">223.937</td><td class="pmi">R$ 2,07</td><td class="pma">R$ 40,62</td><td class="tc">R$ 38,55</td><td class="tw">TMBR Serviços Florestais Eireli</td></tr>
+          <tr><td class="tu">UMF I</td><td>Flota do Iriri</td><td class="tn">124.813</td><td class="pmi">R$ 28,38</td><td class="pma">R$ 63,65</td><td class="tc">R$ 35,27</td><td class="tw">Cichelero Ind. Com. Exp. Madeiras</td></tr>
+          <tr><td class="tu">UMF II</td><td>Flota do Iriri</td><td class="tn">97.904</td><td class="pmi">R$ 14,90</td><td class="pma">R$ 50,83</td><td class="tc">R$ 35,93</td><td class="tw">Curua Florestal Ltda</td></tr>
+        </tbody>
+      </table>
+      <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2026/02/Anexo-12-Formulario-Proposta-de-Preco.pdf" target="_blank">↗ Anexo 12 (PDF)</a><a class="lk dim" href="https://www.legisweb.com.br/legislacao/?id=456898" target="_blank">↗ IN Nº 3/2024</a></div>
+    </div></div>
+  </div>
+
+  <!-- ████ E-RANK ████ -->
+  <div class="panel" id="panel-e-rank">
+    <div class="sh">
+      <h2 class="sh-title">Classificação por UMF — Certames Abertos</h2>
+      <div class="sh-actions"><button class="xbtn" onclick="exportCSV('tbl-rk','ranking-umfs.csv')">⬇ CSV</button><span class="sh-meta">DOE 17/04/2025 · 22/05/2026</span></div>
+    </div>
+    <div class="infobox ib-amber">⚠ CP 001/2026: resultado <strong>preliminar</strong>. 5 empresas recorreram. Classificação sujeita a alteração após julgamento.</div>
+
+    <div class="sdiv g">CP 01/2025 — Mamuru-Arapiuns, UMF 2ª Fase</div>
+    <div class="card c-green" style="margin-bottom:18px"><div class="card-body">
+      <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-ok"><span class="pill-dot"></span>Resultado publicado · 68.680 ha</span></div>
+      <div class="card-title">UMF 2ª Fase — Glebas Mamuru-Arapiuns</div>
+      <table class="t"><thead><tr><th>Pos.</th><th>Empresa</th><th>CNPJ</th><th>Resultado</th></tr></thead><tbody>
+        <tr><td class="rank1">🥇 1º</td><td class="tw">SB Indústria Comércio e Exportação de Madeiras Ltda</td><td class="tn">04.474.059/0001-72</td><td class="tok">Vencedora preliminar</td></tr>
+        <tr><td class="tc">2º</td><td class="tc">MDP Transportes Ltda</td><td class="tn">—</td><td class="tc">Não vencedora</td></tr>
+      </tbody></table>
+      <p style="font-size:.69rem;color:var(--muted)">Pontuação numérica: <strong>celconcessao@ideflorbio.pa.gov.br</strong></p>
+    </div></div>
+
+    <div class="sdiv g">CP 001/2026 — Flota do Paru (4 UMFs · resultado preliminar)</div>
+    <div class="card c-green" style="margin-bottom:18px"><div class="card-body">
+      <table class="t" id="tbl-rk">
+        <thead><tr><th>UMF</th><th>Área (ha)</th><th>PME</th><th>Pos.</th><th>Empresa</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr><td class="tu" rowspan="5">VIa</td><td class="tn" rowspan="5">59.948</td><td class="pmi" rowspan="5">R$7,83</td><td class="rank1">🥇 1º</td><td class="tw">Arapuã Florestal Ltda</td><td class="tok">Vencedora prelim.</td></tr>
+          <tr><td class="tc">2º</td><td class="tc">GO Florestal</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">—</td><td class="tc">UPBIO Soluções Ambientais</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Rio Negro Ind. Com.</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Mais Brasil Serv. Transp.</td><td class="tko">Desistência</td></tr>
+          <tr style="border-top:2px solid var(--rule)"><td class="tu" rowspan="5">VIIIa</td><td class="tn" rowspan="5">144.144</td><td class="pmi" rowspan="5">R$2,91</td><td class="rank1">🥇 1º</td><td class="tw">Arapuã Florestal Ltda</td><td class="tok">Vencedora prelim.</td></tr>
+          <tr><td class="tc">2º</td><td class="tc">GO Florestal</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">—</td><td class="tc">UPBIO Soluções Ambientais</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Rio Negro Ind. Com.</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Mais Brasil Serv. Transp.</td><td class="tko">Desistência</td></tr>
+          <tr style="border-top:2px solid var(--rule)"><td class="tu" rowspan="7">X</td><td class="tn" rowspan="7">167.738</td><td class="pmi" rowspan="7">R$17,99</td><td class="rank1">🥇 1º</td><td class="tw">MCS Agroflorestal e Constr. Civil</td><td class="tok">Vencedora prelim.</td></tr>
+          <tr><td class="tc">2º</td><td class="tc">GO Florestal</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">3º</td><td class="tc">Arapuã Florestal Ltda</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">—</td><td class="tc">UPBIO Soluções Ambientais</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">MDP Transportes Ltda</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Rio Negro Ind. Com.</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Mais Brasil Serv. Transp.</td><td class="tko">Desistência</td></tr>
+          <tr style="border-top:2px solid var(--rule)"><td class="tu" rowspan="7">XI</td><td class="tn" rowspan="7">223.937</td><td class="pmi" rowspan="7">R$2,07</td><td class="rank1">🥇 1º</td><td class="tw">TMBR Serviços Florestais Eireli</td><td class="tok">Vencedora prelim.</td></tr>
+          <tr><td class="tc">2º</td><td class="tc">GO Florestal</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">3º</td><td class="tc">Arapuã Florestal Ltda</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">—</td><td class="tc">UPBIO Soluções Ambientais</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">MDP Transportes Ltda</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Rio Negro Ind. Com.</td><td class="tko">Desistência</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Mais Brasil Serv. Transp.</td><td class="tko">Desistência</td></tr>
+        </tbody>
+      </table>
+    </div></div>
+
+    <div class="sdiv a">CP 001/2026 — Flota do Iriri (2 UMFs · resultado preliminar + recursos)</div>
+    <div class="card c-amber"><div class="card-body">
+      <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-warn"><span class="pill-dot"></span>2 UMFs · com recursos</span></div>
+      <table class="t">
+        <thead><tr><th>UMF</th><th>Área</th><th>PME</th><th>Pos.</th><th>Empresa</th><th>Situação</th></tr></thead>
+        <tbody>
+          <tr><td class="tu" rowspan="11">I</td><td class="tn" rowspan="11">124.813 ha</td><td class="pmi" rowspan="11">R$28,38</td><td class="rank1">🥇 1º</td><td class="tw">Cichelero Ind. Com. Exp. Madeiras</td><td class="tok">Vencedora prelim.</td></tr>
+          <tr><td class="tc">2º</td><td class="tc">Curua Florestal Ltda</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">3º</td><td class="tc">GO Florestal</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">4º</td><td class="tc">Arapuã Florestal Ltda</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">5º</td><td class="tc">TMBR Serviços Florestais</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">—</td><td class="tc">FAVVA Agroindustrial Ltda</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">LCB da Silva Ltda</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Biogel Florestal Ltda</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Caité Florestal do Brasil</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Blue Timber Florestal Ltda</td><td class="twrn">⚠ 2 recursos</td></tr>
+          <tr><td class="tc">—</td><td class="tc">UPBIO Soluções Ambientais</td><td class="tko">Desistência</td></tr>
+          <tr style="border-top:2px solid var(--rule)"><td class="tu" rowspan="11">II</td><td class="tn" rowspan="11">97.904 ha</td><td class="pmi" rowspan="11">R$14,90</td><td class="rank1">🥇 1º</td><td class="tw">Curua Florestal Ltda</td><td class="tok">Vencedora prelim.</td></tr>
+          <tr><td class="tc">2º</td><td class="tc">Cichelero Ind. Com. Exp.</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">3º</td><td class="tc">GO Florestal</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">4º</td><td class="tc">Arapuã Florestal Ltda</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">5º</td><td class="tc">TMB Serviços Florestais</td><td class="tc">Classificada</td></tr>
+          <tr><td class="tc">—</td><td class="tc">FAVVA Agroindustrial Ltda</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">LCB da Silva Ltda</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Biogel Florestal Ltda</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Caité Florestal do Brasil</td><td class="twrn">⚠ Recurso</td></tr>
+          <tr><td class="tc">—</td><td class="tc">Blue Timber Florestal Ltda</td><td class="twrn">⚠ 2 recursos</td></tr>
+          <tr><td class="tc">—</td><td class="tc">UPBIO Soluções Ambientais</td><td class="tko">Desistência</td></tr>
+        </tbody>
+      </table>
+      <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/paru-iriri-edital-aberto" target="_blank">↗ Todas as propostas</a></div>
+    </div></div>
+  </div>
+
+  <!-- ████ E-PAOF ████ -->
+  <div class="panel" id="panel-e-paof">
+    <div class="sh"><h2 class="sh-title">PAOF — Estadual (Pará)</h2><span class="sh-meta">ideflorbio.pa.gov.br/paof · 22/05/2026</span></div>
+    <div class="infobox ib-green">Lei <strong>11.284/2006</strong>. Plano vigente: <strong>PPAOF 2024–2027</strong>, meta de <strong>2 milhões de hectares</strong> até 2026. Parceria BNDES cobre 3,4M ha adicionais.</div>
+    <div class="card c-green" style="margin-bottom:16px"><div class="card-body">
+      <div class="pill-row"><span class="pill p-est">IDEFLOR-Bio</span><span class="pill p-ok"><span class="pill-dot"></span>Vigente</span></div>
+      <div class="card-title">PPAOF 2024–2027 — V 4.0</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Vigência</div><div class="mv">2024 a 2027</div></div>
+        <div class="mc"><div class="mk">Meta</div><div class="mv">2.000.000 ha até 2026</div></div>
+        <div class="mc"><div class="mk">Parceria BNDES</div><div class="mv">&gt;3.400.000 ha</div></div>
+        <div class="mc"><div class="mk">Prioridades</div><div class="mv">Paru, Iriri, Trombetas, Faro</div></div>
+      </div>
+      <div class="linkrow"><a class="lk" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2024/11/PPAOF-2024-2027_V_4.0.pdf" target="_blank">↗ Baixar PPAOF 2024–2027</a></div>
+    </div></div>
+    <div class="slbl" style="margin-bottom:9px">Histórico de PAOFs publicados</div>
+    <div class="tl">
+      <div class="tli cur"><div class="tly">2024–27</div><div><div class="tl-chip">Vigente</div><div class="tlb">PPAOF plurianual · Meta 2M ha · Flotas Paru, Iriri, Trombetas e Faro</div><a class="tla" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2024/11/PPAOF-2024-2027_V_4.0.pdf" target="_blank">↗ PDF</a></div></div>
+      <div class="tli"><div class="tly">2023</div><div><div class="tlb">PAOF 2023 — versão final.</div><a class="tla" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2024/01/PAOF-2023_Versao_final.pdf" target="_blank">↗ PDF</a></div></div>
+      <div class="tli"><div class="tly">2022</div><div><div class="tlb">PAOF 2022.</div><a class="tla" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2023/11/PAOF-2022.pdf" target="_blank">↗ PDF</a></div></div>
+      <div class="tli"><div class="tly">2021</div><div><div class="tlb">PAOF 2021.</div><a class="tla" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2023/11/Plano_Anual_de_Outorga_Florestal_do_Estado_do_Para_2021.pdf" target="_blank">↗ PDF</a></div></div>
+      <div class="tli"><div class="tly">2020</div><div><div class="tlb">PAOF 2020.</div><a class="tla" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2023/11/PAOF_2020_vFinal_IDEFLOR-Bio.pdf" target="_blank">↗ PDF</a></div></div>
+      <div class="tli"><div class="tly">2018</div><div><div class="tlb">Prorrogação via Portaria do PAOF 2017.</div><a class="tla" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2024/07/PAOFS-2018-Portaria-prorrogando-o-2017-para-2018-DOE.pdf" target="_blank">↗ PDF</a></div></div>
+      <div class="tli"><div class="tly">2009</div><div><div class="tlb">Primeiro PAOF do Estado do Pará.</div><a class="tla" href="https://ideflorbio.pa.gov.br/wp-content/uploads/2023/11/PLANO-ANUAL-DE-OUTORGA-FLORESTAL-DO-ESTADO-DO-PARA-2009.pdf" target="_blank">↗ PDF</a></div></div>
+    </div>
+  </div>
+
+  <!-- ████ F-CONTRATOS ████ -->
+  <div class="panel" id="panel-f-contratos">
+    <div class="sh"><h2 class="sh-title">Contratos Vigentes — SFB Federal</h2><span class="sh-meta">gov.br/florestal · snif.florestal.gov.br · 22/05/2026</span></div>
+    <div class="infobox ib-blue"><strong>21 contratos</strong> em 8 Florestas Nacionais nos estados do Amapá, Amazonas, Pará e Rondônia. Área total: <strong>mais de 1,3 milhão de hectares</strong>. Contratos de <strong>40 anos</strong>. Gestão SFB com auditorias AFI.</div>
+    <div class="statrow">
+      <div class="statcell"><div class="mk">Total contratos</div><div class="sv b">21</div><div class="sn">8 Flonas · AP, AM, PA, RO</div></div>
+      <div class="statcell"><div class="mk">Área concedida</div><div class="sv b">&gt;1,3M ha</div><div class="sn">SFB — vigentes</div></div>
+      <div class="statcell"><div class="mk">1º contrato</div><div class="sv b">2008</div><div class="sn">Flona Jamari (RO)</div></div>
+      <div class="statcell"><div class="mk">Prazo contratual</div><div class="sv b">40 anos</div><div class="sn">Lei 11.284/2006</div></div>
+    </div>
+    <div class="cards">
+      <div class="card c-blue"><div class="card-body">
+        <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill" style="background:var(--mist-bg);color:var(--steel);border-color:var(--mist-br);font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:2px;padding:2px 9px"><span class="pill-dot" style="background:var(--sky)"></span>3 UMFs · desde 2008</span></div>
+        <div class="card-title">Flona do Jamari — Rondônia (220.445 ha)</div>
+        <table class="t"><thead><tr><th>UMF</th><th>Concessionário</th><th>Área aprox.</th><th>Status</th></tr></thead><tbody>
+          <tr><td class="tf">UMF I</td><td>Industrial Flona do Jamari Ltda</td><td class="tn">~96.000 ha</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">UMF II</td><td>Amata S.A.</td><td class="tn">~67.000 ha</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">UMF III</td><td>Madeflona (subst. Sakura, 2019)</td><td class="tn">~57.000 ha</td><td class="tokf">● Vigente</td></tr>
+        </tbody></table>
+        <div class="linkrow"><a class="lk blue" href="https://snif.florestal.gov.br/pt-br/concessao-florestal/142-gestao-florestal/dados-complementares-concessao-florestal" target="_blank">↗ SNIF — Dados Jamari</a></div>
+      </div></div>
+      <div class="card c-blue"><div class="card-body">
+        <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill" style="background:var(--mist-bg);color:var(--steel);border-color:var(--mist-br);font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:2px;padding:2px 9px"><span class="pill-dot" style="background:var(--sky)"></span>4 UMFs · desde 2010</span></div>
+        <div class="card-title">Flona de Saracá-Taquera — Pará (304.146 ha)</div>
+        <table class="t"><thead><tr><th>UMF</th><th>Concessionário</th><th>Status</th></tr></thead><tbody>
+          <tr><td class="tf">UMF II</td><td>Ebata — Produtos Florestais Ltda</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">UMF III</td><td>Golf Indústria, Com. e Exportação de Madeiras</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">UMF IV</td><td>Faber-Castell Amazônia</td><td class="tokf">● Vigente</td></tr>
+          <tr><td class="tf">Lote Sul</td><td>A confirmar no SFB</td><td class="tokf">● Vigente</td></tr>
+        </tbody></table>
+        <p style="font-size:.67rem;color:var(--muted);margin-top:6px">UMF I não concedida (comunidades quilombolas). Consultar SFB para dados atualizados.</p>
+      </div></div>
+      <div class="card c-blue"><div class="card-body">
+        <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill" style="background:var(--mist-bg);color:var(--steel);border-color:var(--mist-br);font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:2px;padding:2px 9px"><span class="pill-dot" style="background:var(--sky)"></span>Crepori + Altamira + Caxiuanã</span></div>
+        <div class="card-title">Três Flonas no Pará — 647.446 ha · 9 UMFs</div>
+        <div class="mgrid">
+          <div class="mc"><div class="mk">Flona Crepori</div><div class="mv">74.518 ha · 2 UMFs · 2012</div></div>
+          <div class="mc"><div class="mk">Flona Altamira</div><div class="mv">374.848 ha · 4 UMFs · 2014–15</div></div>
+          <div class="mc"><div class="mk">Flona Caxiuanã</div><div class="mv">198.080 ha · 3 UMFs · 2015–16</div></div>
+        </div>
+        <p class="cdesc">Contratos de 40 anos com pagamentos trimestrais ao SFB. Auditorias independentes (AFI) via FNDF.</p>
+        <div class="linkrow"><a class="lk blue" href="https://snif.florestal.gov.br/pt-br/temas-florestais/concessoes-florestais" target="_blank">↗ SNIF — Concessões Federais</a></div>
+      </div></div>
+      <div class="card c-blue"><div class="card-body">
+        <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill" style="background:var(--mist-bg);color:var(--steel);border-color:var(--mist-br);font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border:1px solid;border-radius:2px;padding:2px 9px"><span class="pill-dot" style="background:var(--sky)"></span>Jacundá + Amapá + Humaitá</span></div>
+        <div class="card-title">Rondônia, Amapá e Amazonas</div>
+        <div class="mgrid">
+          <div class="mc"><div class="mk">Flona Jacundá (RO)</div><div class="mv">96.653 ha · 2 UMFs · 2011</div></div>
+          <div class="mc"><div class="mk">Flona do Amapá (AP)</div><div class="mv">~80.000 ha · 2 UMFs · 2019</div></div>
+          <div class="mc"><div class="mk">Flona Humaitá (AM)</div><div class="mv">~50.000 ha · 1 UMF · 2021</div></div>
+        </div>
+        <div class="linkrow"><a class="lk blue" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento" target="_blank">↗ SFB — Monitoramento</a></div>
+      </div></div>
+    </div>
+  </div>
+
+  <!-- ████ F-FUTUROS ████ -->
+  <div class="panel" id="panel-f-futuros">
+    <div class="sh"><h2 class="sh-title">Próximos Editais Federais — Pipeline BNDES + SFB</h2><span class="sh-meta">gov.br/florestal · bndes.gov.br · Nov/2024</span></div>
+    <div class="infobox ib-blue"><strong>Contrato BNDES + SFB firmado em novembro/2024</strong>. 11 UCs, <strong>6 milhões de hectares</strong>. Editais a partir de 2026. Estudos financiados pelo BID.</div>
+    <div class="statrow">
+      <div class="statcell"><div class="mk">UCs no pipeline</div><div class="sv b">11</div><div class="sn">PA, RR, AM, RO, MT</div></div>
+      <div class="statcell"><div class="mk">Área total</div><div class="sv b">6M ha</div><div class="sn">Manejo + restauração</div></div>
+      <div class="statcell"><div class="mk">Previsão editais</div><div class="sv b">2026+</div><div class="sn">Escalonado por UC</div></div>
+      <div class="statcell"><div class="mk">Restauração</div><div class="sv b">400K ha</div><div class="sn">Áreas degradadas + carbono</div></div>
+    </div>
+    <div class="card c-blue"><div class="card-body">
+      <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill p-dim">Pipeline BNDES/BID · a partir 2026</span></div>
+      <div class="card-title">11 Unidades de Conservação — 6 Milhões de Hectares</div>
+      <table class="t">
+        <thead><tr><th>Floresta Nacional</th><th>Estado</th><th>Tipo</th></tr></thead>
+        <tbody>
+          <tr><td class="tf">Flona de Trairão</td><td class="tc">PA</td><td class="tc">Manejo florestal sustentável</td></tr>
+          <tr><td class="tf">Flona do Jamanxim</td><td class="tc">PA</td><td class="tc">Manejo florestal sustentável</td></tr>
+          <tr><td class="tf">Flona da Mulata</td><td class="tc">PA</td><td class="tc">Manejo florestal sustentável</td></tr>
+          <tr><td class="tf">Flona Tapirapé-Aquiri</td><td class="tc">PA</td><td class="tc">Manejo florestal sustentável</td></tr>
+          <tr><td class="tf">Flona do Anauá</td><td class="tc">RR</td><td class="tc">Manejo florestal sustentável</td></tr>
+          <tr><td class="tf">5 Flonas do Amazonas</td><td class="tc">AM</td><td class="tc">&gt;2M ha · Previsão 2025–26</td></tr>
+          <tr><td class="tf">Flona de Irati</td><td class="tc">PR</td><td class="tc">Restauração + créditos de carbono · Contrato já assinado</td></tr>
+        </tbody>
+      </table>
+      <div class="linkrow">
+        <a class="lk blue" href="https://agenciadenoticias.bndes.gov.br/detalhe/noticia/BNDES-e-Servico-Florestal-Brasileiro-firmam-contrato-para-estruturar-novos-projetos-de-concessoes-florestais/" target="_blank">↗ Contrato BNDES + SFB (Nov/2024)</a>
+        <a class="lk blue" href="https://florestas.bndes.gov.br/iniciativas/concessoes-florestais/" target="_blank">↗ BNDES Florestas</a>
+        <a class="lk dim" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/proximos-editais" target="_blank">↗ Próximos Editais SFB</a>
+      </div>
+    </div></div>
+  </div>
+
+  <!-- ████ F-PAOF ████ -->
+  <div class="panel" id="panel-f-paof">
+    <div class="sh"><h2 class="sh-title">PAOF Federal — SFB</h2><span class="sh-meta">gov.br/florestal · Decreto 10.347/2020</span></div>
+    <div class="infobox ib-blue">O <strong>PAOF Federal</strong> elenca todas as Florestas Públicas Federais passíveis de concessão. Elaborado pelo <strong>SFB</strong>, aprovado pelo MAPA. O PAOF 2020 tornava elegíveis cerca de <strong>3,8 milhões de hectares</strong>.</div>
+    <div class="card c-blue"><div class="card-body">
+      <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill p-dim">Base legal</span></div>
+      <div class="card-title">Plano Anual de Outorga Florestal Federal</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Elaboração</div><div class="mv">SFB</div></div>
+        <div class="mc"><div class="mk">Aprovação</div><div class="mv">MAPA — Decreto 10.347/2020</div></div>
+        <div class="mc"><div class="mk">Área elegível (2020)</div><div class="mv">~3.800.000 ha</div></div>
+        <div class="mc"><div class="mk">Base legal</div><div class="mv">Lei 11.284/2006</div></div>
+        <div class="mc"><div class="mk">Periodicidade</div><div class="mv">Publicação anual no DOU</div></div>
+        <div class="mc"><div class="mk">Exclusões</div><div class="mv">Sem Plano de Manejo, impedimentos legais</div></div>
+      </div>
+      <div class="linkrow"><a class="lk blue" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/plano-anual-de-outorga-florestal" target="_blank">↗ PAOF Federal — SFB</a><a class="lk dim" href="https://snif.florestal.gov.br/pt-br/temas-florestais/concessoes-florestais" target="_blank">↗ SNIF</a></div>
+    </div></div>
+  </div>
+
+
+  <!-- ████ NOVOS EDITAIS ████ -->
+  <div class="panel" id="panel-novos">
+    <div class="sh">
+      <h2 class="sh-title">Novos Editais Federais Lançados — 2025 e 2026</h2>
+      <span class="sh-meta">MMA · SFB · gov.br/florestal · 22/05/2026</span>
+    </div>
+    <div class="infobox ib-blue">
+      <strong>4 novos editais — 3 lançados + 1 pré-lançamento</strong> pelo SFB desde fevereiro/2025, marcando avanços históricos: primeiro leilão na B3, primeiro edital de restauração com carbono e primeira concessão em gleba pública fora de Unidade de Conservação. Meta do governo: <strong>5 milhões de hectares</strong> concedidos até 2027.
+    </div>
+
+    <!-- JATUARANA -->
+    <div class="sdiv g">Flona do Jatuarana — AM · Leilão realizado na B3 · Contratos assinados</div>
+    <div class="card c-green" style="margin-bottom:16px"><div class="card-body">
+      <div class="pill-row">
+        <span class="pill p-fed">SFB Federal</span>
+        <span class="pill p-ok"><span class="pill-dot"></span>Contratos assinados — maio/2025</span>
+        <span class="pill" style="background:#fff8e0;color:#7a5000;border:1px solid #f0c060;font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:2px;padding:2px 9px">🏆 1º Leilão Florestal na B3</span>
+      </div>
+      <div class="card-title">Floresta Nacional do Jatuarana — 453.401 ha · 4 UMFs · 37 anos</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Localização</div><div class="mv">Apuí — Amazonas (AM)</div></div>
+        <div class="mc"><div class="mk">Área concedida</div><div class="mv">453.401,11 ha (80% da Flona)</div></div>
+        <div class="mc"><div class="mk">UMFs licitadas</div><div class="mv">4 (todas arrematadas)</div></div>
+        <div class="mc"><div class="mk">Edital publicado</div><div class="mv">10/02/2025</div></div>
+        <div class="mc"><div class="mk">Leilão na B3</div><div class="mv">21/05/2025 · São Paulo (SP)</div></div>
+        <div class="mc"><div class="mk">Prazo contrato</div><div class="mv">37 anos</div></div>
+        <div class="mc"><div class="mk">Arrecadação anual</div><div class="mv">R$ 47,9M/ano (ágio de 47%)</div></div>
+        <div class="mc"><div class="mk">Empregos previstos</div><div class="mv">~2.800 diretos e indiretos</div></div>
+      </div>
+      <p class="cdesc">
+        Marco histórico: primeira concessão florestal licitada na B3 – Bolsa de Valores do Brasil.
+        8 licitantes disputaram os 4 lotes. Resultado gerou ágio de 47% sobre a estimativa inicial de R$ 32,6M/ano.
+        Incremento de 35% na área federal concedida. Inclui Encargos Acessórios obrigatórios em pesquisa, proteção florestal e apoio às comunidades.
+        Parceria MMA + SFB + BNDES.
+        ⚠ UMF II: aviso de suspensão de assinatura publicado no DOU — verificar situação atual no SFB.
+      </p>
+      <p style="font-family:'Barlow Condensed',sans-serif;font-size:.63rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--ghost);margin-bottom:8px">Resultado do Leilão — Empresas Vencedoras</p>
+      <table class="t" style="margin-bottom:14px">
+        <thead><tr><th>UMF</th><th>Empresa Vencedora</th><th>Lance (R$/m³)</th><th>Outorga Fixa</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="tf">UMF I</td><td class="tw">OC Prime Comércio e Industrialização de Madeiras Ltda</td><td style="font-family:'DM Mono',monospace;font-size:.68rem;font-weight:700;color:var(--fern)">R$ 244,98/m³</td><td class="tn">R$ 4.000.000</td><td class="tokf">● Homologado</td></tr>
+          <tr><td class="tf">UMF II</td><td class="tw">E. Duarte da Silva Ltda (Madeireira Gedai)</td><td style="font-family:'DM Mono',monospace;font-size:.68rem;font-weight:700;color:var(--fern)">R$ 193,65/m³</td><td class="tn">R$ 5.000.000</td><td class="twrn">⚠ Suspensão assinatura</td></tr>
+          <tr><td class="tf">UMF III</td><td class="tw">Brasil Tropical Pisos Ltda</td><td style="font-family:'DM Mono',monospace;font-size:.68rem;font-weight:700;color:var(--fern)">R$ 150,48/m³</td><td class="tn">R$ 2.200.000</td><td class="tokf">● Homologado</td></tr>
+          <tr><td class="tf">UMF IV</td><td class="tw">Brasil Tropical Pisos Ltda</td><td style="font-family:'DM Mono',monospace;font-size:.68rem;font-weight:700;color:var(--fern)">R$ 152,86/m³</td><td class="tn">R$ 2.200.000</td><td class="tokf">● Homologado</td></tr>
+        </tbody>
+      </table>
+      <div class="linkrow">
+        <a class="lk blue" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/editais-em-licitacao/floresta-nacional-do-jatuarana-am" target="_blank">↗ Página oficial SFB — Jatuarana</a>
+        <a class="lk blue" href="https://www.gov.br/mma/pt-br/noticias/com-leilao-na-b3-governo-federal-amplia-uso-de-instrumentos-economicos-para-proteger-a-floresta-e-concede-453-mil-hectares-da-flona-do-jatuarana" target="_blank">↗ Resultado MMA (21/05/2025)</a>
+        <a class="lk dim" href="https://www.gov.br/florestal/pt-br/assuntos/noticias/2025/maio/jatuarana-leilao-na-b3-encerra-com-todos-os-lotes-arrematados-e-gera-agio-de-47-sobre-a-estimativa-de-arrecadacao-anual" target="_blank">↗ Nota SFB — Resultado leilão</a>
+      </div>
+    </div></div>
+
+    <!-- BOM FUTURO -->
+    <div class="sdiv b" style="color:var(--sky)">Flona do Bom Futuro — RO · Concessão de Restauração + Carbono · Vencedora declarada</div>
+    <div class="card c-blue" style="margin-bottom:16px"><div class="card-body">
+      <div class="pill-row">
+        <span class="pill p-fed">SFB Federal</span>
+        <span class="pill" style="background:rgba(90,160,240,.12);color:#5090d0;border:1px solid rgba(90,160,240,.3);font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:2px;padding:2px 9px"><span class="pill-dot" style="background:#5090d0"></span>Resultado declarado — Abr/2026</span>
+        <span class="pill" style="background:#f0ecff;color:#5030a0;border:1px solid #c8b0f0;font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:2px;padding:2px 9px">🌱 Restauração + Crédito de Carbono</span>
+      </div>
+      <div class="card-title">Floresta Nacional do Bom Futuro — 98.319 ha · 2 UMFs · 40 anos</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Localização</div><div class="mv">Porto Velho — Rondônia (RO)</div></div>
+        <div class="mc"><div class="mk">Área concedida</div><div class="mv">98.319,13 ha (2 UMs)</div></div>
+        <div class="mc"><div class="mk">Edital publicado</div><div class="mv">11/11/2025</div></div>
+        <div class="mc"><div class="mk">Sessão pública</div><div class="mv">18/03/2026 · sede B3 (SP)</div></div>
+        <div class="mc"><div class="mk">Resultado</div><div class="mv">Abril/2026 — Re.green</div></div>
+        <div class="mc"><div class="mk">Prazo contrato</div><div class="mv">40 anos</div></div>
+        <div class="mc"><div class="mk">Restauração prevista</div><div class="mv">6.290 ha de áreas degradadas</div></div>
+        <div class="mc"><div class="mk">Créditos CO₂</div><div class="mv">1.897.302 t CO₂eq (potencial)</div></div>
+        <div class="mc"><div class="mk">Investimento (Capex)</div><div class="mv">R$ 87 milhões em 40 anos</div></div>
+        <div class="mc"><div class="mk">UMF I</div><div class="mv">Deserta — relançamento previsto</div></div>
+      </div>
+      <p class="cdesc">
+        Primeiro edital SFB focado exclusivamente em restauração florestal com créditos de carbono como principal receita.
+        Somente a UMF II recebeu proposta: vencedora <strong>Re.green Reflorestamento S.A.</strong> com Capex estimado de R$ 87 milhões.
+        UMF I foi deserta e o SFB avaliará ajustes para relançamento. Inclui silvicultura de espécies nativas.
+        Parceria MMA + SFB + BNDES + COP30.
+      </p>
+      <table class="t" style="margin-bottom:14px">
+        <thead><tr><th>UMF</th><th>Área (ha)</th><th>Empresa Vencedora</th><th>Capex estimado</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td class="tf">UMF II</td><td class="tn">~51.000 ha</td><td class="tw">Re.green Reflorestamento S.A.</td><td class="tn">R$ 87M / 40 anos</td><td class="tokf">● Resultado declarado</td></tr>
+          <tr><td class="tf">UMF I</td><td class="tn">~47.000 ha</td><td class="tc">—</td><td class="tc">—</td><td class="tko">Deserta — a relançar</td></tr>
+        </tbody>
+      </table>
+      <div class="linkrow">
+        <a class="lk blue" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/editais-em-licitacao/floresta-nacional-do-bom-futuro-ro" target="_blank">↗ Página oficial SFB — Bom Futuro</a>
+        <a class="lk blue" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/editais-em-licitacao/floresta-nacional-do-bom-futuro-ro/0_edital_bf_sem-marcas_20251110.pdf" target="_blank">↗ Edital Bom Futuro (PDF)</a>
+        <a class="lk dim" href="https://agenciadenoticias.bndes.gov.br/cop30/COP30-Com-apoio-do-BNDES-SFB-e-MMA-lancam-edital-de-concessao-florestal-na-Flona-do-Bom-Futuro/" target="_blank">↗ BNDES — Lançamento edital</a>
+      </div>
+    </div></div>
+
+    <!-- GLEBA CASTANHO -->
+    <div class="sdiv a">Gleba Castanho — AM · Aberto · Propostas até 06/07/2026 · INÉDITO</div>
+    <div class="card c-amber" style="margin-bottom:16px"><div class="card-body">
+      <div class="pill-row">
+        <span class="pill p-fed">SFB Federal</span>
+        <span class="pill p-warn"><span class="pill-dot"></span>Aberto — Propostas até 06/07/2026</span>
+        <span class="pill" style="background:var(--sand-bg);color:var(--earth);border:1px solid var(--sand-br);font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:2px;padding:2px 9px">🌿 1ª Concessão em Gleba Pública</span>
+      </div>
+      <div class="card-title">Gleba Castanho — 59.999 ha · 1 UMF · Até 40 anos · Manejo Sustentável</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Localização</div><div class="mv">Manaquiri, Careiro e Beruri — AM</div></div>
+        <div class="mc"><div class="mk">Área concedida</div><div class="mv">59.999 ha (24,9% da gleba)</div></div>
+        <div class="mc"><div class="mk">Área total da gleba</div><div class="mv">240.533 ha</div></div>
+        <div class="mc"><div class="mk">UMFs</div><div class="mv">1 UMF</div></div>
+        <div class="mc"><div class="mk">Aviso publicado DOU</div><div class="mv">15/04/2026</div></div>
+        <div class="mc"><div class="mk">Entrega de propostas</div><div class="mv">06/07/2026 · sede SFB</div></div>
+        <div class="mc"><div class="mk">Prazo contrato</div><div class="mv">Até 40 anos</div></div>
+        <div class="mc"><div class="mk">Encargos acessórios</div><div class="mv">~R$ 460 mil/ano (comunidades)</div></div>
+        <div class="mc"><div class="mk">Licitação</div><div class="mv">Concorrência nº 01/2026 — SFB</div></div>
+        <div class="mc"><div class="mk">Portaria autorização</div><div class="mv">MMA nº 1.648/2026 (30/03/2026)</div></div>
+      </div>
+      <p class="cdesc">
+        Marco histórico: <strong>primeira concessão florestal federal em gleba pública fora de Unidade de Conservação</strong> desde a Lei 11.284/2006.
+        Antes gerida pela SPU, a Gleba Castanho era historicamente pressionada por grilagem e desmatamento ilegal.
+        Prevê manejo de impacto reduzido, produção madeireira e não madeireira, e obrigações sociais com comunidades do entorno.
+        Estruturado pelo BNDES. Integra o Plano Plurianual de Outorga Florestal 2024–2027.
+        <strong style="color:var(--earth)">Propostas até 06/07/2026 na sede do SFB.</strong>
+      </p>
+      <div class="linkrow">
+        <a class="lk" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/editais-em-licitacao/gleba-castanho-am" target="_blank">↗ Página oficial SFB — Gleba Castanho</a>
+        <a class="lk" href="https://www.gov.br/florestal/pt-br/assuntos/noticias/2026/abril/governo-federal-lanca-edital-para-a-primeira-concessao-florestal-em-gleba-publica" target="_blank">↗ Nota MMA (15/04/2026)</a>
+        <a class="lk dim" href="https://agenciadenoticias.bndes.gov.br/cultura/Gleba-Castanho-edital-inedito-de-concessao-florestal-estruturada-pelo-BNDES-e-lancado/" target="_blank">↗ BNDES — Lançamento Gleba Castanho</a>
+        <a class="lk dim" href="https://oeco.org.br/salada-verde/concessao-inedita-em-gleba-publica-testa-novo-modelo-de-gestao-para-florestas-na-amazonia/" target="_blank">↗ Análise O Eco</a>
+      </div>
+    </div></div>
+
+
+    <!-- BALATA-TUFARI -->
+    <div class="sdiv" style="color:#a060e0;margin-top:4px">Flona Balata-Tufari — AM · Aguardando TCU · Página SFB atualizada 10/06/2026</div>
+    <div class="card" style="border-top:3px solid #a060e0;margin-bottom:16px"><div class="card-body">
+      <div class="pill-row">
+        <span class="pill p-fed">SFB Federal</span>
+        <span class="pill" style="background:#f5eeff;color:#6030a0;border:1px solid #c8a8f0;font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:2px;padding:2px 9px"><span class="pill-dot" style="background:#a060e0"></span>Pré-edital — Aguardando TCU</span>
+        <span class="pill" style="background:#fff8e0;color:#7a5000;border:1px solid #f0c060;font-family:'Barlow Condensed',sans-serif;font-size:.6rem;font-weight:700;letter-spacing:.06em;text-transform:uppercase;border-radius:2px;padding:2px 9px">📄 Página SFB atualizada 10/06/2026</span>
+      </div>
+      <div class="card-title">Floresta Nacional de Balata-Tufari — 1.079.669 ha · 6 UMFs · Amazonas</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Localização</div><div class="mv">Canutama e Tapuá — AM</div></div>
+        <div class="mc"><div class="mk">Área total</div><div class="mv">1.079.669 ha</div></div>
+        <div class="mc"><div class="mk">UMFs previstas</div><div class="mv">6 unidades de manejo</div></div>
+        <div class="mc"><div class="mk">Consulta pública</div><div class="mv">Encerrada (ago–set/2022)</div></div>
+        <div class="mc"><div class="mk">Versão TCU</div><div class="mv">Proposta enviada ao TCU (2025)</div></div>
+        <div class="mc"><div class="mk">Página SFB atualizada</div><div class="mv" style="color:#a060e0;font-weight:600">10/06/2026 — HOJE</div></div>
+        <div class="mc"><div class="mk">Status atual</div><div class="mv">Aguardando aprovação TCU</div></div>
+        <div class="mc"><div class="mk">CLPI realizada</div><div class="mv">Abr/2026 — 100+ indígenas</div></div>
+        <div class="mc"><div class="mk">Parceria</div><div class="mv">SFB + BNDES</div></div>
+        <div class="mc"><div class="mk">Previsão lançamento</div><div class="mv">A confirmar após TCU</div></div>
+      </div>
+      <p class="cdesc">
+        Uma das maiores florestas nacionais da Amazônia em processo de concessão. Audiências públicas realizadas em Canutama e Lábrea (agosto/2022). Proposta de edital com 15 anexos técnicos enviada ao TCU em versão 2025. <strong>Página oficial SFB modificada hoje (10/06/2026)</strong> — pode indicar atualização de documentos ou publicação da versão final para aprovação do Tribunal. Em abril/2026 o SFB realizou Consulta Livre, Prévia e Informada (CLPI) com mais de 100 indígenas de 10 organizações e 13 territórios, incorporando garantias de uso tradicional dos recursos naturais e destinação de parte da receita às comunidades.
+      </p>
+      <div style="padding:10px 14px;background:#f5eeff;border-left:3px solid #a060e0;font-size:.74rem;color:#4a2080;margin-bottom:14px;border-radius:0 4px 4px 0">
+        ⚡ <strong>Atenção:</strong> A modificação da página SFB hoje pode sinalizar avanço iminente — acompanhe a seção "Editais em Licitação" no gov.br/florestal para confirmar se o edital foi formalmente lançado.
+      </div>
+      <div class="linkrow">
+        <a class="lk" style="color:#6030a0;border-color:#c8a8f0" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/editais-em-consulta-publica/floresta-nacional-de-balata-tufari" target="_blank">↗ Página oficial SFB — Balata-Tufari</a>
+        <a class="lk dim" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/editais-em-licitacao" target="_blank">↗ Editais em Licitação — SFB</a>
+        <a class="lk dim" href="https://www.gov.br/florestal/pt-br/assuntos/noticias/2026/abril/servico-florestal-brasileiro-fortalece-dialogo-sobre-concessoes-florestais-com-liderancas-indigenas" target="_blank">↗ CLPI com indígenas — Abr/2026</a>
+      </div>
+    </div></div>
+
+    <!-- CONTEXTO GERAL -->
+    <div class="sdiv" style="color:var(--ghost)">Contexto — Expansão das Concessões Florestais Federais</div>
+    <div class="card c-dim"><div class="card-body">
+      <div class="pill-row"><span class="pill p-fed">SFB Federal</span><span class="pill p-dim">Estratégia 2024–2027</span></div>
+      <div class="card-title">Meta: 5 Milhões de Hectares Concedidos até 2027</div>
+      <div class="mgrid">
+        <div class="mc"><div class="mk">Meta PPA 2024–27</div><div class="mv">5.000.000 ha concedidos</div></div>
+        <div class="mc"><div class="mk">Área atual (antes Jatuarana)</div><div class="mv">~1.300.000 ha</div></div>
+        <div class="mc"><div class="mk">Após Jatuarana</div><div class="mv">~1.750.000 ha (+35%)</div></div>
+        <div class="mc"><div class="mk">Novos editais em estudo</div><div class="mv">17 projetos (SFB+BNDES)</div></div>
+        <div class="mc"><div class="mk">Florestas Nacionais AM</div><div class="mv">>2M ha · Previsão 2025–26</div></div>
+        <div class="mc"><div class="mk">Inovações 2025–26</div><div class="mv">B3, Restauração+Carbono, Gleba pública</div></div>
+      </div>
+      <div class="linkrow">
+        <a class="lk blue" href="https://www.gov.br/florestal/pt-br/assuntos/concessoes-e-monitoramento/proximos-editais" target="_blank">↗ Próximos Editais — SFB</a>
+        <a class="lk blue" href="https://florestas.bndes.gov.br/iniciativas/concessoes-florestais/" target="_blank">↗ BNDES Florestas</a>
+        <a class="lk dim" href="https://snif.florestal.gov.br/pt-br/temas-florestais/concessoes-florestais" target="_blank">↗ SNIF — Painel Concessões</a>
+      </div>
+    </div></div>
+  </div>
+
+  </div><!-- /content -->
+</div><!-- /main -->
+
+<script>
+/* ── NAVIGATION ── */
+const TITLES = {
+  mapa:'Mapa Integrado',painel:'Painel Comparativo',
+  'e-edital':'Edital Aberto — IDEFLOR-Bio','e-fase':'Fase Externa em Andamento',
+  'e-contratos':'Contratos Vigentes — Estadual','e-precos':'Preços — Madeira em Tora',
+  'e-rank':'Classificação por UMF','e-paof':'PAOF Estadual',
+  'f-contratos':'Contratos Vigentes — SFB','f-futuros':'Próximos Editais Federais','f-paof':'PAOF Federal',
+  'novos':'Novos Editais — 2025 e 2026'
+};
+
+function go(id,btn) {
+  document.querySelectorAll('.nb').forEach(b => b.classList.remove('on'));
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('on'));
+  btn.classList.add('on');
+  document.getElementById('panel-'+id).classList.add('on');
+  document.getElementById('ptitle').textContent = TITLES[id] || id;
+  window.scrollTo(0,0);
+  if (id === 'mapa') setTimeout(initMap, 80);
+}
+
+/* ── THEME ── */
+let dark = false;
+function toggleTheme() {
+  dark = !dark;
+  document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+  document.getElementById('thlbl').textContent = dark ? 'Modo Claro' : 'Modo Escuro';
+  if (window._map) { window._map.remove(); window._map = null; mapReady = false; initMap(); }
+}
+
+/* ── MAP DATA ── */
+const POINTS = [
+  // Federais vigentes
+  {lat:-8.76,lng:-63.86,cat:'f',color:'#24456e',label:'Flona do Jamari — RO',desc:'3 UMFs · 220.445 ha · SFB · Contratos desde 2008 · Industrial Flona, Amata, Madeflona'},
+  {lat:-10.5,lng:-62.1, cat:'f',color:'#24456e',label:'Flona de Jacundá — RO',desc:'2 UMFs · 96.653 ha · SFB · Contrato 2011'},
+  {lat:-1.62,lng:-57.48,cat:'f',color:'#24456e',label:'Flona de Saracá-Taquera — PA',desc:'4 UMFs · 304.146 ha · SFB · Contratos 2010 · Ebata, Golf, Faber-Castell'},
+  {lat:-6.40,lng:-55.53,cat:'f',color:'#24456e',label:'Flona do Crepori — PA',desc:'2 UMFs · 74.518 ha · SFB · Contrato 2012'},
+  {lat:-4.20,lng:-54.88,cat:'f',color:'#24456e',label:'Flona de Altamira — PA',desc:'4 UMFs · 374.848 ha · SFB · Contratos 2014–2015'},
+  {lat:-1.74,lng:-51.50,cat:'f',color:'#24456e',label:'Flona de Caxiuanã — PA',desc:'3 UMFs · 198.080 ha · SFB · Contratos 2015–2016'},
+  {lat:0.80, lng:-52.00,cat:'f',color:'#24456e',label:'Flona do Amapá — AP',desc:'2 UMFs · ~80.000 ha · SFB · Contrato 2019'},
+  {lat:-7.50,lng:-63.00,cat:'f',color:'#24456e',label:'Flona de Humaitá — AM',desc:'1 UMF · ~50.000 ha · SFB · Contrato 2021'},
+  // Pipeline federal
+  {lat:-4.80,lng:-56.20,cat:'x',color:'#888',label:'Flona de Trairão (pipeline)',desc:'PA · Pipeline BNDES+SFB · Edital a partir 2026'},
+  {lat:-5.50,lng:-56.80,cat:'x',color:'#888',label:'Flona do Jamanxim (pipeline)',desc:'PA · Pipeline BNDES+SFB · Edital a partir 2026'},
+  {lat:-5.00,lng:-55.00,cat:'x',color:'#888',label:'Flona da Mulata (pipeline)',desc:'PA · Pipeline BNDES+SFB'},
+  {lat:-6.80,lng:-51.00,cat:'x',color:'#888',label:'Flona Tapirapé-Aquiri (pipeline)',desc:'PA · Pipeline BNDES+SFB'},
+  {lat:1.50, lng:-61.80,cat:'x',color:'#888',label:'Flona do Anauá (pipeline)',desc:'RR · Pipeline BNDES+SFB'},
+  {lat:-7.00,lng:-62.00,cat:'x',color:'#888',label:'5 Flonas do Amazonas (pipeline)',desc:'AM · >2M ha · Pipeline BNDES+SFB · Previsão 2025–26'},
+  // Estaduais vigentes
+  {lat:-2.60,lng:-56.00,cat:'e',color:'#1d5c35',label:'Mamuru-Arapiuns — UMF I',desc:'PA · LN Guerra · Contrato vigente · IDEFLOR-Bio'},
+  {lat:-2.75,lng:-56.20,cat:'e',color:'#1d5c35',label:'Mamuru-Arapiuns — UMF II',desc:'PA · Rondobel · Contrato vigente · IDEFLOR-Bio'},
+  {lat:-2.90,lng:-56.40,cat:'e',color:'#1d5c35',label:'Mamuru-Arapiuns — UMF III',desc:'PA · Amazônia Florestal · Contrato vigente · IDEFLOR-Bio'},
+  {lat:-2.00,lng:-52.80,cat:'e',color:'#1d5c35',label:'Flota do Paru — UMFs vigentes',desc:'PA · CEMAL (I), Segredo (II), RRX (III/VII/IX), Blue Timber (IV) · 6 contratos · IDEFLOR-Bio'},
+  // Resultado preliminar
+  {lat:-2.10,lng:-53.10,cat:'p',color:'#c4903a',label:'Flota do Paru — UMF VIa',desc:'CP 001/2026 · Arapuã Florestal · Resultado prelim. · PME R$7,83/m³ · 59.948 ha'},
+  {lat:-1.90,lng:-52.60,cat:'p',color:'#c4903a',label:'Flota do Paru — UMF VIIIa',desc:'CP 001/2026 · Arapuã Florestal · Resultado prelim. · PME R$2,91/m³ · 144.144 ha'},
+  {lat:-1.70,lng:-52.20,cat:'p',color:'#c4903a',label:'Flota do Paru — UMF X',desc:'CP 001/2026 · MCS Agroflorestal · Resultado prelim. · PME R$17,99/m³ · 167.738 ha'},
+  {lat:-1.50,lng:-52.00,cat:'p',color:'#c4903a',label:'Flota do Paru — UMF XI',desc:'CP 001/2026 · TMBR Serviços Florestais · Resultado prelim. · PME R$2,07/m³ · 223.937 ha'},
+  {lat:-6.00,lng:-53.80,cat:'p',color:'#c4903a',label:'Flota do Iriri — UMF I',desc:'CP 001/2026 · Cichelero Madeiras · Resultado prelim. · PME R$28,38/m³ · RECURSOS · 124.813 ha'},
+  {lat:-5.80,lng:-53.50,cat:'p',color:'#c4903a',label:'Flota do Iriri — UMF II',desc:'CP 001/2026 · Curua Florestal · Resultado prelim. · PME R$14,90/m³ · RECURSOS · 97.904 ha'},
+  // Aguardando contrato
+  {lat:-2.80,lng:-55.70,cat:'e',color:'#2e7d4f',label:'Mamuru — UMF 2ª Fase',desc:'PA · SB Ind. Com. Exp. Madeiras · Aguardando assinatura · CP 01/2025'},
+];
+
+let mapReady = false;
+let mapMarkers = [];
+let activeFilters = {f:true,e:true,p:true,x:true};
+
+function initMap() {
+  if (mapReady && window._map) return;
+  if (window._map) window._map.remove();
+  const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+  const tileURL = isDark
+    ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+    : 'https://{s}.basemaps.cartocdn.com/light_nolabels/{z}/{x}/{y}{r}.png';
+  const m = L.map('themap', {zoomControl:true}).setView([-4.5,-55],5);
+  L.tileLayer(tileURL, {attribution:'© OpenStreetMap, CartoDB', maxZoom:14}).addTo(m);
+  window._map = m;
+  mapMarkers = [];
+
+  POINTS.forEach(p => {
+    const ic = L.divIcon({
+      className: '',
+      html: `<div style="width:14px;height:14px;border-radius:50%;background:${p.color};border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.28)"></div>`,
+      iconSize:[14,14], iconAnchor:[7,7]
+    });
+    const mk = L.marker([p.lat,p.lng],{icon:ic}).addTo(m);
+    mk.bindPopup(
+      `<b style="font-size:.82rem;display:block;margin-bottom:4px;color:#1c1c17">${p.label}</b>`+
+      `<span style="font-size:.72rem;color:#666;line-height:1.55">${p.desc}</span>`,
+      {maxWidth:280}
+    );
+    mk._cat = p.cat;
+    mapMarkers.push(mk);
+  });
+  mapReady = true;
+}
+
+function mapFilter(cat, btn) {
+  activeFilters[cat] = !activeFilters[cat];
+  btn.classList.toggle('on', activeFilters[cat]);
+  if (!window._map) return;
+  mapMarkers.forEach(mk => {
+    if (activeFilters[mk._cat]) mk.addTo(window._map);
+    else window._map.removeLayer(mk);
+  });
+}
+
+/* ── SEARCH ── */
+function doSearch(q) {
+  document.querySelectorAll('.hl').forEach(el => {
+    const t = el.textContent; el.replaceWith(document.createTextNode(t));
+  });
+  const term = q.toLowerCase().trim();
+  if (!term) return;
+  const re = new RegExp('(' + term.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + ')','gi');
+  document.querySelectorAll('.t td, .card-title, .tlb, .cdesc').forEach(el => {
+    if (el.textContent.toLowerCase().includes(term)) {
+      el.innerHTML = el.textContent.replace(re,'<span class="hl">$1</span>');
+    }
+  });
+}
+
+/* ── CSV EXPORT ── */
+function exportCSV(tableId, fname) {
+  const t = document.getElementById(tableId);
+  if (!t) { alert('Tabela não encontrada.'); return; }
+  let csv = '';
+  t.querySelectorAll('tr').forEach(r => {
+    const cols = [...r.querySelectorAll('th,td')].map(c => `"${c.textContent.trim().replace(/"/g,'""')}"`);
+    if (cols.length) csv += cols.join(',') + '\n';
+  });
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent('\uFEFF' + csv);
+  a.download = fname; a.click();
+}
+
+/* ── INIT ── */
+window.addEventListener('DOMContentLoaded', () => {
+  initMap();
+});
+</script>
+</body>
+</html>

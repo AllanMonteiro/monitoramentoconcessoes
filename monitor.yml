@@ -1,0 +1,37 @@
+name: Monitor Concessões Florestais
+
+on:
+  schedule:
+    # Roda às 08h e 17h horário de Brasília (BRT = UTC-3)
+    - cron: '0 11 * * *'   # 08h BRT
+    - cron: '0 20 * * *'   # 17h BRT
+  workflow_dispatch:        # Permite rodar manualmente pelo GitHub
+
+jobs:
+  monitorar:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write       # Para commitar o state file atualizado
+
+    steps:
+      - name: Checkout repositório
+        uses: actions/checkout@v4
+
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Executar monitor
+        env:
+          SMTP_USER:   ${{ secrets.SMTP_USER }}
+          SMTP_PASS:   ${{ secrets.SMTP_PASS }}
+          ALERT_EMAIL: ${{ secrets.ALERT_EMAIL }}
+        run: python monitor.py
+
+      - name: Salvar estado atualizado
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "chore: atualiza estado do monitor [skip ci]"
+          file_pattern: "monitor_state.json monitor_report.json"
+          commit_author: "Monitor Bot <monitor@noreply.github.com>"
